@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "243067162410",
+    "project_id": "botroad-cd",
+    "storage_bucket": "botroad-cd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:243067162410:android:efc07725a645540bc8d853",
+        "android_client_info": {
+          "package_name": "com.eta.celeste.botroad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "243067162410-dfr5cfs0rqs8je0vcp1hmm1dn8qa7ape.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eta.celeste.botroad",
+            "certificate_hash": "251e16963e468b51a2dba6154a9bcb2b43fcf0f1"
+          }
+        },
+        {
+          "client_id": "243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnylsbegpS54XLHyWLM62TbX9jrXV57tU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,151 @@
+
+Résumé de l’application Botroad
+Botroad est une application mobile Flutter qui combine un chatbot IA et un système de navigation pour guider l’utilisateur vers n’importe quel lieu. 
+Grâce à l’intégration de l’API ChatGPT, l’utilisateur s’adresse en langage naturel au bot pour demander un itinéraire, poser des questions sur un lieu, ou ajouter des étapes intermédiaires. 
+Botroad récupère la position GPS, valide les lieux via Google Places, trace l’itinéraire avec Google Directions, et l’affiche sur une carte interactive. 
+L’app gère également la création de compte (email/Google), l’achat de crédits par mobile money ou Visa, l’historique des recherches, et propose des lieux tendances et de la publicité ciblée.
+
+Interfaces graphiques (chaque page)
+Écran de démarrage / Splash
+
+Fond bleu sombre avec logo “Botroad” centré
+
+Animation simple (par ex. épingle qui pique la carte)
+
+Chargement puis redirection automatique vers l’écran de connexion si pas déjà authentifié
+
+
+Page Authentification
+
+Choix de connexion :
+
+Bouton “Se connecter avec Google”
+
+Formulaire “Email + Mot de passe”
+
+Lien “Créer un compte” et “Mot de passe oublié”
+
+Pied de page discret avec version de l’app
+
+
+Page Inscription
+
+Formulaire simple : nom, email, mot de passe, confirmation de mot de passe
+
+Bouton “S’inscrire”
+
+Retour vers “Se connecter”
+
+
+Page Accueil / Chat
+
+Header : icônes “Profil” (droite) et “Historique” (gauche)
+
+Corps :
+
+Fil de discussion style chat (bulles utilisateur / bulles bot)
+
+À la saisie : champ de texte en bas avec icône micro (voice input optionnel) et bouton “Envoyer”
+
+Barre de crédits : indique crédits restants, bouton “Acheter des crédits”
+
+
+Page Carte & Itinéraire
+
+Header : bouton retour “← Chat”
+
+GoogleMap Widget couvrant la majeure partie de l’écran
+
+Overlay bas :
+
+Résumé itinéraire (distance, durée)
+
+Bouton “Démarrer la navigation”
+
+Options : épingler étapes, modifier route, recalculer
+
+
+Page Historique
+
+Liste chronologique des dernières recherches/itinéraires
+
+Chaque item affiche :
+
+Icône lieu + nom (orig → dest)
+
+Date (ex. “3 mai 2025, 14:20”)
+
+Bouton “Effacer l’historique”
+
+
+Page Achat de crédits
+
+Sélection de pack (ex. 10 crédits, 25 crédits, 50 crédits) avec prix
+
+Choix du moyen de paiement :
+
+Mobile money (numéro, opérateur)
+
+Carte Visa (numéro, date, CVV)
+
+Bouton “Payer” et confirmation de transaction
+
+
+Page Profil / Paramètres
+
+Affichage DU profil : photo (optionnel), nom ou email
+
+Menu :
+
+“Mes crédits” (solde + historique paiement)
+
+“Préférences” (langue, thèmes clair/sombre)
+
+“Notifications” (activer/desactiver)
+
+“À propos” / “Déconnexion”
+
+
+Page Tendances & Publicités (optionnelle sur l’accueil)
+
+Carrousel ou grille des lieux “Tendances ce mois-ci”
+
+Bloc “Offres sponsorisées” : carte ou tuile cliquable vers page du lieu
+
+Chaque interface doit respecter la charte graphique minimaliste :
+
+Couleurs : bleu sombre (#1A237E), blanc, gris clair pour fonds et séparateurs
+
+Typographie : Poppins ou Montserrat, titres en bold, textes en regular
+
+Icônes : lignes épurées (Material Icons ou Lucide)
+
+Composants : cards arrondies (radius 12px), ombres légères, spacing généreux (padding/margin ≥ 12px)
+
+
+
+
+
+MODELISATIONS
+users(id, email, password, google_id, credits, created_at)
+
+conversations(id, user_id, started_at)
+
+messages(id, conversation_id, sender, content, created_at)
+
+locations(id, name, latitude, longitude, place_id, category, popularity_score)
+
+routes(id, user_id, origin_id, destination_id, waypoints, created_at)
+
+payments(id, user_id, method, amount, credits_added, status, created_at)
+
+trending_locations(id, location_id, count, period)
+
+ads(id, title, description, target_location, active, created_at)
+
+TARIF
+Mini → 2.500 CDF - 0.99$ :: 10 crédits
+
+Standard → 10.000 CDF - 3.99$ :: 50 crédits 
+
+Premium → 20.000 CDF - 6.99$ :: 100 crédits
