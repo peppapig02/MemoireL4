@@ -8,6 +8,7 @@ import 'package:botroad/controllers/payments_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:botroad/controllers/trending_locations_controller.dart';
 import 'package:botroad/controllers/user_controller.dart';
+import 'package:botroad/firebase_options.dart';
 import 'package:botroad/utils/crypt/cryptService.dart';
 
 import 'package:get/get.dart';
@@ -41,15 +42,7 @@ class Setting {
     WidgetsFlutterBinding.ensureInitialized();
     printDebug("getting");
     await Firebase.initializeApp(
-      // options: const FirebaseOptions(
-      //   apiKey: "AIzaSyD5wlpQDowuT5Yj53kAbu7yfdXp7nhJ33g",
-      //   authDomain: "botroad-cd.firebaseapp.com",
-      //   projectId: "botroad-cd",
-      //   storageBucket: "botroad-cd.firebasestorage.app",
-      //   messagingSenderId: "243067162410",
-      //   appId: "1:243067162410:web:0194cc8a50a384a9c8d853",
-      //   measurementId: "G-VZYHGBDZQZ",
-      // ),
+      options: DefaultFirebaseOptions.currentPlatform,
     ).whenComplete(() async {
       auth = FirebaseAuth.instance;
       user = auth!.currentUser;

@@ -29,6 +29,9 @@
       "api_key": [
         {
           "current_key": "AIzaSyBnylsbegpS54XLHyWLM62TbX9jrXV57tU"
+        },
+        {
+          "current_key": "AIzaSyDqO6qFUQ_wCaPTm9ahRHEzwPF7whfP9Cc"
         }
       ],
       "services": {
@@ -37,6 +40,60 @@
             {
               "client_id": "243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "243067162410-mal1qg08cl00a9m7jrior879vub4d0if.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.botroad"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:243067162410:android:dc11ed387add5cc4c8d853",
+        "android_client_info": {
+          "package_name": "com.example.botroad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "243067162410-8k9m55g0kpbrufn43dni4ak0hcqa613c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.botroad",
+            "certificate_hash": "9d4d3098ed7fb6a8b252bcd8f21043a6191fb8fc"
+          }
+        },
+        {
+          "client_id": "243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnylsbegpS54XLHyWLM62TbX9jrXV57tU"
+        },
+        {
+          "current_key": "AIzaSyDqO6qFUQ_wCaPTm9ahRHEzwPF7whfP9Cc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "243067162410-mal1qg08cl00a9m7jrior879vub4d0if.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.botroad"
+              }
             }
           ]
         }
