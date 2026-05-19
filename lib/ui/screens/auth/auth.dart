@@ -187,7 +187,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 Get.offAll(() => const Presentation());
                               } else {
                                 Setting.showMessage(
-                                  "Erreur",
+                                  'login_error'.tr,
                                   Setting.userCtrl.messageErreur,
                                   Colors.red,
                                 );
@@ -198,12 +198,16 @@ class _AuthScreenState extends State<AuthScreen> {
                               children: [
                                 Image.asset(Assets.google, height: 24),
                                 const SizedBox(width: 10),
-                                const Text('Continuer avec Google'),
+                                Text('auth_continue_google'.tr),
                               ],
                             ),
                           ),
                       SizedBox(height: height / 50),
-                      Text("Version 1.0"),
+                      Text(
+                        'auth_version'.trParams({
+                          'version': Setting.version,
+                        }),
+                      ),
                     ],
                   ),
                 ),
@@ -240,9 +244,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       unselectedLabelColor: Colors.grey,
                       dividerColor: Colors.grey.shade200,
                       labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      tabs: const [
-                        Tab(text: 'Se connecter'),
-                        Tab(text: "S'inscrire"),
+                      tabs: [
+                        Tab(text: 'auth_login_tab'.tr),
+                        Tab(text: 'auth_register_tab'.tr),
                       ],
                     ),
 

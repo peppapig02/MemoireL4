@@ -1,5 +1,7 @@
+import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -8,7 +10,7 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('À propos'),
+        title: Text('drawer_about'.tr),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -36,55 +38,55 @@ class AboutScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 30),
-            const Text(
-              'À propos du projet',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'about_project_title'.tr,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'BotRoad est un projet innovant développé dans le cadre d\'un mémoire académique. Cette application combine l\'intelligence artificielle et la navigation pour offrir une expérience unique de guidage urbain.',
-              style: TextStyle(fontSize: 16),
+            Text(
+              'about_project_body'.tr,
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Fonctionnalités principales',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'about_features_title'.tr,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
             _buildFeatureItem(
               Icons.chat,
-              'Chat IA',
-              'Interagissez avec notre assistant virtuel pour obtenir des directions et des informations sur les lieux.',
+              'about_feature_chat_title'.tr,
+              'about_feature_chat_body'.tr,
             ),
             _buildFeatureItem(
               Icons.map,
-              'Navigation intelligente',
-              'Obtenez des itinéraires optimisés et des informations en temps réel sur votre trajet.',
+              'about_feature_nav_title'.tr,
+              'about_feature_nav_body'.tr,
             ),
             _buildFeatureItem(
               Icons.location_on,
-              'Lieux tendances',
-              'Découvrez les endroits populaires et les points d\'intérêt autour de vous.',
+              'about_feature_places_title'.tr,
+              'about_feature_places_body'.tr,
             ),
             const SizedBox(height: 30),
-            const Text(
-              'Perspectives futures',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'about_future_title'.tr,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            const Text(
-              'En raison de sa pertinence et de son potentiel, BotRoad sera développé en version production dans un avenir proche. L\'objectif est de rendre l\'application disponible en ligne pour le grand public, avec des fonctionnalités enrichies et une expérience utilisateur optimisée.',
-              style: TextStyle(fontSize: 16),
+            Text(
+              'about_future_body'.tr,
+              style: const TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Version',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'about_version_title'.tr,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-            const Text(
-              '1.0.0 (Version prototype)',
-              style: TextStyle(fontSize: 16),
+            Text(
+              'auth_version'.trParams({'version': Setting.version}),
+              style: const TextStyle(fontSize: 16),
             ),
           ],
         ),

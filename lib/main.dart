@@ -1,4 +1,5 @@
 import 'package:botroad/ui/screens/auth/auth.dart';
+import 'package:botroad/core/i18n/app_translations.dart';
 import 'package:botroad/ui/screens/home/chat.dart';
 import 'package:botroad/ui/screens/home/home.dart';
 import 'package:botroad/ui/screens/home/iteneraire.dart';
@@ -26,6 +27,9 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'BotRoad',
       debugShowCheckedModeBanner: false,
+      translations: AppTranslations(),
+      locale: AppTranslations.getStoredLocale(),
+      fallbackLocale: AppTranslations.fallback,
       theme: ThemeData(
         useMaterial3: true, //actives Material 3 (la dernière version de design Google).a 
         

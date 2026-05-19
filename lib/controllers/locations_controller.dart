@@ -1,4 +1,5 @@
 import 'package:botroad/bd/columns.dart';
+import 'package:botroad/core/config/app_secrets.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -21,9 +22,7 @@ class LocationsController extends GetxController {
   }
 
   void _initPlacesSdk() {
-    placesSdk = FlutterGooglePlacesSdk(
-      "AIzaSyBnylsbegpS54XLHyWLM62TbX9jrXV57tU",
-    );
+    placesSdk = FlutterGooglePlacesSdk(AppSecrets.googleMapsApiKey);
   }
 
   ///On recupère la liste des Locations

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class MessageInput extends StatelessWidget {
   final TextEditingController controller;
@@ -17,9 +18,7 @@ class MessageInput extends StatelessWidget {
       color: const Color(0xFFF6F7FB),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
-
         children: [
-          // Zone de texte multilignes
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
@@ -30,7 +29,6 @@ class MessageInput extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 maxLines: null,
-
                 keyboardType: TextInputType.multiline,
                 decoration: InputDecoration(
                   border: InputBorder.none,
@@ -38,13 +36,12 @@ class MessageInput extends StatelessWidget {
                   focusedBorder: InputBorder.none,
                   fillColor: const Color(0xFFE9EBF1),
                   isDense: true,
-                  hintText: 'Décrivez moi le lieu',
+                  hintText: 'chat_describe_place'.tr,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // Bouton d’envoi
           GestureDetector(
             onTap: onSend,
             child: Container(

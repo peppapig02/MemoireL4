@@ -1,4 +1,5 @@
 import 'package:botroad/bd/columns.dart';
+import 'package:botroad/core/config/app_secrets.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
@@ -234,7 +235,7 @@ class RoutesController extends GetxController {
     try {
       // Créer les points de départ et d'arrivée
       PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-        googleApiKey: "AIzaSyBnylsbegpS54XLHyWLM62TbX9jrXV57tU",
+        googleApiKey: AppSecrets.googleMapsApiKey,
 
         request: PolylineRequest(
           wayPoints:

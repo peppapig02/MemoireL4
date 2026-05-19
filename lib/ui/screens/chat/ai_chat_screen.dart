@@ -2,8 +2,20 @@ import 'package:botroad/bd/columns.dart';
 import 'package:botroad/controllers/conversations_controller.dart';
 import 'package:botroad/controllers/home_controller.dart';
 import 'package:botroad/controllers/messages_controller.dart';
+import 'package:botroad/core/config/app_secrets.dart';
+import 'package:botroad/core/services/chat_intent_service.dart';
+import 'package:botroad/core/services/chat_navigation_service.dart';
+import 'package:botroad/core/services/geocoding_service.dart';
+import 'package:botroad/core/services/location_service.dart';
+import 'package:botroad/core/services/nearby_places_service.dart';
+import 'package:botroad/core/services/road_report_service.dart';
+import 'package:botroad/core/services/route_risk_service.dart';
+import 'package:botroad/core/services/routing_service.dart';
+import 'package:botroad/core/services/trip_history_service.dart';
+import 'package:botroad/core/models/route_result.dart';
 import 'package:botroad/models/conversations_model.dart';
 import 'package:botroad/models/messages_model.dart';
+import 'package:botroad/models/routes_model.dart';
 import 'package:botroad/services/openai_service.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
@@ -46,6 +58,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
   static const int maxMemorySize = 10;
   final LocationsController locationsCtrl = Setting.locationsCtrl;
   final RoutesController routesCtrl = Setting.routesCtrl;
+  late final LocationService locationService;
+  late final ChatNavigationService chatNavigationService;
+  late final NearbyPlacesService nearbyPlacesService;
+  late final RoadReportService roadReportService;
+  late final RouteRiskService routeRiskService;
+  late final RoutingService routingService;
+  late final TripHistoryService tripHistoryService;
   Position? currentPosition;
 
   @override
@@ -68,6 +87,21 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   void initOpenAIService() {
     openAIService = OpenAIService(apiKey: homeCtrl.openaikey);
+    locationService = LocationService();
+    chatNavigationService = ChatNavigationService(
+      chatIntentService: ChatIntentService(),
+      locationService: locationService,
+      geocodingService: GeocodingService(apiKey: AppSecrets.googleMapsApiKey),
+    );
+    nearbyPlacesService = NearbyPlacesService(
+      apiKey: AppSecrets.googleMapsApiKey,
+    );
+    roadReportService = RoadReportService(collection: Setting.fRoadReports);
+    routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
+    routingService = RoutingService(
+      googleApiKey: AppSecrets.googleMapsApiKey,
+    );
+    tripHistoryService = TripHistoryService(collection: Setting.fTripHistory);
   }
 
   void _scrollToBottom() {
@@ -226,6 +260,258 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     }
   }
 
+  Future<bool> _tryHandleMvpNavigation(
+    String content,
+    String conversationId,
+  ) async {
+    try {
+      final navigationResult = await chatNavigationService.processMessage(
+        message: content,
+        userId: Setting.userCtrl.user.value.key,
+      );
+
+      final request = navigationResult.request;
+
+      if (request.intent == ChatIntentService.calculateRouteIntent &&
+          navigationResult.isReadyForRouting) {
+        final rawRouteResult = await routingService.calculateRoute(
+          userId: Setting.userCtrl.user.value.key,
+          startLat: request.startLat!,
+          startLng: request.startLng!,
+          destinationLat: request.destinationLat!,
+          destinationLng: request.destinationLng!,
+          startLabel: request.startText,
+          destinationLabel: request.destinationText,
+        );
+
+        if (rawRouteResult != null) {
+          final routeResult = await routeRiskService.attachWarnings(rawRouteResult);
+          final route = await _persistRouteResult(routeResult);
+          if (route == null) {
+            await _saveBotMessage(
+              conversationId,
+              "J'ai calcule l'itineraire, mais je n'ai pas pu l'enregistrer pour l'affichage.",
+            );
+            return true;
+          }
+
+          await _saveTripHistory(content, routeResult);
+
+          final warningText = routeResult.warnings.isNotEmpty
+              ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
+              : '';
+          final botMessage =
+              "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
+
+          await _saveBotMessage(conversationId, botMessage);
+          Get.to(() => Iteneraire(route: route));
+          return true;
+        }
+      }
+
+      if (request.intent == ChatIntentService.calculateRouteIntent &&
+          !navigationResult.isReadyForRouting) {
+        final botMessage = _buildNavigationFailureMessage(navigationResult);
+        await _saveBotMessage(conversationId, botMessage);
+        return true;
+      }
+
+      if (request.intent == ChatIntentService.findNearbyPlaceIntent) {
+        if (request.category == null || request.category!.trim().isEmpty) {
+          await _saveBotMessage(
+            conversationId,
+            "J'ai compris que vous cherchez un lieu proche, mais je n'ai pas reconnu la categorie demandee.",
+          );
+          return true;
+        }
+
+        if (request.startLat == null || request.startLng == null) {
+          await _saveBotMessage(
+            conversationId,
+            "Je n'ai pas pu determiner votre position actuelle pour rechercher les lieux proches.",
+          );
+          return true;
+        }
+
+        final places = await nearbyPlacesService.findNearbyPlaces(
+          latitude: request.startLat!,
+          longitude: request.startLng!,
+          category: request.category!,
+          resultCount: request.resultCount ?? 1,
+        );
+
+        if (places.isEmpty) {
+          await _saveBotMessage(
+            conversationId,
+            "Je n'ai trouve aucun ${request.category} proche pour le moment.",
+          );
+          return true;
+        }
+
+        final lines = places.map((place) {
+          final distance = place.distance?.toStringAsFixed(1) ?? '?';
+          final rating =
+              place.rating != null ? ' - note ${place.rating!.toStringAsFixed(1)}' : '';
+          return "- ${place.name} (${distance} km${rating})";
+        }).join('\n');
+
+        final title =
+            (request.resultCount ?? 1) > 1
+                ? "Voici les ${places.length} ${request.category} les plus proches :"
+                : "Voici le ${request.category} le plus proche :";
+
+        await _saveBotMessage(
+          conversationId,
+          "$title\n$lines",
+        );
+        return true;
+      }
+
+      if (request.intent == ChatIntentService.showTripHistoryIntent) {
+        final userId = Setting.userCtrl.user.value.key;
+        if (userId == null) {
+          await _saveBotMessage(
+            conversationId,
+            "Je n'ai pas pu retrouver votre identifiant utilisateur pour charger l'historique.",
+          );
+          return true;
+        }
+
+        final historyItems = await tripHistoryService.getTripHistoryForUser(
+          userId,
+          limit: 5,
+        );
+
+        if (historyItems.isEmpty) {
+          await _saveBotMessage(
+            conversationId,
+            "Je n'ai trouve aucun trajet enregistre pour le moment.",
+          );
+          return true;
+        }
+
+        final lines = historyItems.map((item) {
+          final origin = item.originLabel ?? 'Depart inconnu';
+          final destination = item.destinationLabel ?? 'Destination inconnue';
+          final distance = item.distance.toStringAsFixed(1);
+          final duration = item.duration.toStringAsFixed(0);
+          return "- $origin -> $destination ($distance km, $duration min)";
+        }).join('\n');
+
+        await _saveBotMessage(
+          conversationId,
+          "Voici vos 5 derniers trajets :\n$lines",
+        );
+        return true;
+      }
+
+      if (request.intent == ChatIntentService.reportBadRoadIntent) {
+        final currentLocation = await locationService.getCurrentLocation();
+        if (currentLocation == null) {
+          await _saveBotMessage(
+            conversationId,
+            "Je n'ai pas pu recuperer votre position actuelle pour enregistrer le signalement.",
+          );
+          return true;
+        }
+
+        final report = roadReportService.buildUserReport(
+          userId: Setting.userCtrl.user.value.key,
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          comment: content,
+        );
+
+        final reportId = await roadReportService.saveRoadReport(report);
+        if (reportId == null) {
+          await _saveBotMessage(
+            conversationId,
+            "Le signalement n'a pas pu etre enregistre pour le moment. Reessayez plus tard.",
+          );
+          return true;
+        }
+
+        await _saveBotMessage(
+          conversationId,
+          "Votre signalement de route a bien ete enregistre. Merci pour votre contribution.",
+        );
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      printDebug("error mvp navigation ::: $e");
+      return false;
+    }
+  }
+
+  Future<RoutesModel?> _persistRouteResult(RouteResult routeResult) async {
+    final points =
+        routeResult.geometry
+            .map(
+              (point) => '${point['latitude']},${point['longitude']}',
+            )
+            .join('|');
+
+    final route = RoutesModel(
+      id_user: routeResult.userId,
+      nom:
+          'De ${routeResult.startLabel ?? 'position actuelle'} vers ${routeResult.destinationLabel ?? 'destination'}',
+      points: points,
+      waypoints: const [],
+      warnings: routeResult.warnings,
+      date_create: DateTime.now().toString(),
+    );
+
+    routesCtrl.routes.value = route;
+    final key = await routesCtrl.addRoutes();
+    if (key == null) {
+      return null;
+    }
+
+    route.key = key;
+    return route;
+  }
+
+  Future<void> _saveTripHistory(
+    String originalMessage,
+    RouteResult routeResult,
+  ) async {
+    final tripHistory = tripHistoryService.buildTripHistory(
+      originalMessage: originalMessage,
+      routeResult: routeResult,
+    );
+    await tripHistoryService.saveTripHistory(tripHistory);
+  }
+
+  String _buildNavigationFailureMessage(ChatNavigationResult result) {
+    switch (result.failureReason) {
+      case 'missing_destination':
+        return "Je n'ai pas pu identifier la destination. Precisez ou vous voulez aller.";
+      case 'destination_not_found':
+        return "Je n'ai pas pu localiser la destination demandee. Essayez avec un nom de lieu plus precis.";
+      case 'start_location_not_resolved':
+        return "Je n'ai pas pu determiner le point de depart. Activez la localisation ou precisez votre lieu de depart.";
+      case 'missing_category':
+        return "Je n'ai pas pu identifier la categorie de lieu recherchee.";
+      case 'reference_location_not_resolved':
+        return "Je n'ai pas pu determiner votre position actuelle pour lancer cette recherche.";
+      default:
+        return "Je n'ai pas encore pu traiter cette demande automatiquement. Reformulez-la ou essayez avec plus de precision.";
+    }
+  }
+
+  Future<void> _saveBotMessage(String conversationId, String message) async {
+    messagesCtrl.messages.value = MessagesModel(
+      id_conversation: conversationId,
+      sender: 'bot',
+      content: message,
+      date_create: DateTime.now().toString(),
+    );
+    await messagesCtrl.addMessages();
+    _updateConversationMemory('bot', message);
+  }
+
   Future<void> _sendMessage() async {
     final content = messageController.text.trim();
     if (content.isEmpty) return;
@@ -269,6 +555,12 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       await messagesCtrl.addMessages();
       _updateConversationMemory('user', content);
 
+      final handledByMvp = await _tryHandleMvpNavigation(content, conversationId);
+      if (handledByMvp) {
+        _scrollToBottom();
+        return;
+      }
+
       // Generate response using our custom service with context
       final context = _buildConversationContext();
       final response = await openAIService?.generateResponse(
@@ -283,8 +575,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       _scrollToBottom();
     } catch (e) {
       Get.snackbar(
-        'Erreur',
-        'Une erreur est survenue lors de l\'envoi du message',
+        'chat_send_error_title'.tr,
+        'chat_send_error_body'.trParams({'error': '$e'}),
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
@@ -429,7 +721,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           ),
           const SizedBox(width: 8),
           Text(
-            'Bot est en train d\'écrire...',
+            'chat_typing'.tr,
             style: TextStyle(color: Colors.black87, fontSize: 12),
           ),
         ],
@@ -452,7 +744,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(conversations?.libelle ?? 'Nouvelle conversation'),
+        title: Text(conversations?.libelle ?? 'chat_new_conversation'.tr),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
@@ -479,12 +771,12 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               child: TextField(
                 controller: searchController,
                 decoration: InputDecoration(
-                  hintText: 'Rechercher dans les messages...',
-                  prefixIcon: Icon(Icons.search),
+                  hintText: 'chat_search_messages'.tr,
+                  prefixIcon: const Icon(Icons.search),
                   suffixIcon:
                       searchQuery.isNotEmpty
                           ? IconButton(
-                            icon: Icon(Icons.clear),
+                            icon: const Icon(Icons.clear),
                             onPressed: () {
                               setState(() {
                                 searchQuery = '';
@@ -509,7 +801,13 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               stream: _getMessagesStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Erreur: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'chat_error_prefix'.trParams({
+                        'error': '${snapshot.error}',
+                      }),
+                    ),
+                  );
                 }
                 // printDebug(
                 //   "snapshot.hasData: ${snapshot.hasData} et snapshot.connectionState: ${snapshot.connectionState}",
@@ -540,7 +838,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                       return _buildLoadMoreIndicator();
                     }
                     if (messages.isEmpty) {
-                      return const Center(child: Text('Aucun message trouvé'));
+                      return Center(child: Text('chat_no_message_found'.tr));
                     }
 
                     final message = messages[isTyping ? index - 1 : index];
@@ -559,9 +857,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text(
-                                      'Renvoyer ce message ?',
-                                      style: TextStyle(
+                                    Text(
+                                      'chat_resend_message'.tr,
+                                      style: const TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -585,7 +883,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                                           onPressed: () {
                                             Navigator.pop(context);
                                           },
-                                          child: const Text('Non'),
+                                          child: Text('chat_no'.tr),
                                         ),
                                         ElevatedButton(
                                           onPressed: () {
@@ -598,7 +896,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                                             }
                                             Navigator.pop(context);
                                           },
-                                          child: const Text('Oui'),
+                                          child: Text('chat_yes'.tr),
                                         ),
                                       ],
                                     ),
@@ -676,8 +974,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 Expanded(
                   child: TextField(
                     controller: messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Écrivez votre message...',
+                    decoration: InputDecoration(
+                      hintText: 'chat_write_message'.tr,
                       border: InputBorder.none,
                     ),
                     maxLines: null,

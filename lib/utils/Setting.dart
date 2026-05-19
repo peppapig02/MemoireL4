@@ -145,6 +145,11 @@ class Setting {
     }
   }
 
+  static CollectionReference<Map<String, dynamic>> fTripHistory = firestore
+      .collection("TripHistory");
+  static CollectionReference<Map<String, dynamic>> fRoadReports = firestore
+      .collection("RoadReports");
+
   static CollectionReference fPayments = firestore.collection("Payments");
   static PaymentsController get paymentsCtrl {
     try {

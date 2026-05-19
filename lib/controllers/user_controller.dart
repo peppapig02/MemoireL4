@@ -276,6 +276,33 @@ class UserController extends GetxController {
     }
   }
 
+  Future<bool> sendPasswordResetEmail(String email) async {
+    loading.value = true;
+    loading.refresh();
+
+    try {
+      await Setting.auth!.sendPasswordResetEmail(email: email.trim());
+      loading.value = false;
+      loading.refresh();
+      return true;
+    } catch (e) {
+      if (e.toString().contains("invalid-email")) {
+        messageErreur = "Email incorrect";
+        printDebug("Email incorrect");
+      } else if (e.toString().contains("user-not-found") ||
+          e.toString().contains("not-found")) {
+        messageErreur = "Cet email ne correspond a aucun utilisateur";
+        printDebug("Utilisateur non trouve");
+      } else {
+        messageErreur = "Erreur lors de l'envoi du lien";
+        printDebug("error reset password::$e");
+      }
+      loading.value = false;
+      loading.refresh();
+      return false;
+    }
+  }
+
   Future<bool> createUser() async {
     try {
       loading.value = true;

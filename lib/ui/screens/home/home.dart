@@ -1,6 +1,8 @@
+import 'package:botroad/models/conversations_model.dart';
 import 'package:botroad/models/user_model.dart';
-import 'package:botroad/ui/screens/credits/buy_credits_screen.dart';
 import 'package:botroad/ui/screens/chat/ai_chat_screen.dart';
+import 'package:botroad/ui/screens/credits/buy_credits_screen.dart';
+import 'package:botroad/ui/screens/history/conversations_history_screen.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/drawer.dart';
 import 'package:botroad/utils/Setting.dart';
@@ -8,8 +10,6 @@ import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/const/images.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:botroad/models/conversations_model.dart';
-import 'package:botroad/ui/screens/history/conversations_history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -37,8 +37,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final conversations = await Setting.conversationsCtrl
-          .getConversationsOfUser(Setting.userCtrl.user.value.key!, limit: 3);
+      final conversations = await Setting.conversationsCtrl.getConversationsOfUser(
+        Setting.userCtrl.user.value.key!,
+        limit: 3,
+      );
 
       if (conversations != null) {
         setState(() {
@@ -60,13 +62,14 @@ class _HomeScreenState extends State<HomeScreen> {
       final date = DateTime.parse(dateStr);
       final now = DateTime.now();
       final difference = now.difference(date);
+      final time = '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
 
       if (difference.inDays == 0) {
-        return 'Aujourd\'hui, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+        return '${'home_today'.tr}, $time';
       } else if (difference.inDays == 1) {
-        return 'Hier, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+        return '${'home_yesterday'.tr}, $time';
       } else if (difference.inDays < 7) {
-        return '${difference.inDays} jours, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+        return '${'home_days_ago'.trParams({'count': '${difference.inDays}'})}, $time';
       } else {
         return '${date.day}/${date.month}/${date.year}';
       }
@@ -77,8 +80,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double height = Setting.getHeight(context);
-    double spacing = height / 20;
+    final height = Setting.getHeight(context);
+    final spacing = height / 20;
+
     return Scaffold(
       drawer: DrawerCustom(),
       drawerScrimColor: Colors.transparent,
@@ -108,20 +112,18 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              // Header
               Container(
                 height: Setting.getHeight(context) / 3.5,
-                decoration: BoxDecoration(
-                  image: const DecorationImage(
+                decoration: const BoxDecoration(
+                  image: DecorationImage(
                     image: AssetImage(Assets.logo),
                     fit: BoxFit.fitHeight,
                   ),
                 ),
               ),
               SizedBox(height: spacing),
-              // Main content
               Text(
-                'Bienvenue sur',
+                'home_welcome'.tr,
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                   fontSize: 40,
                   color: AppColors.primary,
@@ -138,11 +140,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               SizedBox(height: spacing),
-
               Text(
-                'Commencer le chat avec l\'IA',
+                'home_start_ai_chat'.tr,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontSize: 20,
                   color: AppColors.textPrimary,
@@ -150,17 +150,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Votre niveau de crédits : ',
+                    'home_credit_level'.tr,
                     style: Theme.of(context).textTheme.bodyLarge,
                     textAlign: TextAlign.center,
                   ),
                   Text(
-                    user?.credits ?? "0",
+                    user?.credits ?? '0',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -176,32 +175,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.credit_card),
-                    SizedBox(width: 10),
+                    const Icon(Icons.credit_card),
+                    const SizedBox(width: 10),
                     Text(
-                      "Acheter des crédits",
+                      'home_buy_credits'.tr,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(width: 10),
-                    Icon(Icons.arrow_forward_ios),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.arrow_forward_ios),
                   ],
                 ),
               ),
-
               SizedBox(height: spacing),
               Boutton(
-                text: "Commencer le chat",
+                text: 'home_start_chat'.tr,
                 onPressed: () {
                   Get.to(() => const AIChatScreen());
                 },
               ),
-
-              SizedBox(height: 10),
-
-              // Recent Conversations Section
+              const SizedBox(height: 10),
               if (recentConversations.isNotEmpty) ...[
                 Container(
                   width: double.infinity,
@@ -225,64 +220,57 @@ class _HomeScreenState extends State<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Conversations récentes',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.titleLarge?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            'home_recent_conversations'.tr,
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                           Expanded(
                             child: TextButton(
                               onPressed: () {
-                                Get.to(
-                                  () => const ConversationsHistoryScreen(),
-                                );
+                                Get.to(() => const ConversationsHistoryScreen());
                               },
-                              child: const Text('Voir tout'),
+                              child: Text('home_see_all'.tr),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      ...recentConversations
-                          .map(
-                            (conversation) => Card(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              child: ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: AppColors.primary,
-                                  child: const Icon(
-                                    Icons.chat,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                title: Text(
-                                  conversation.libelle ??
-                                      'Nouvelle conversation',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  _formatDate(conversation.date_create),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                                trailing: const Icon(Icons.chevron_right),
-                                onTap: () {
-                                  Get.to(
-                                    () => AIChatScreen(
-                                      conversation: conversation,
-                                    ),
-                                  );
-                                },
+                      ...recentConversations.map(
+                        (conversation) => Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              backgroundColor: AppColors.primary,
+                              child: Icon(
+                                Icons.chat,
+                                color: Colors.white,
                               ),
                             ),
-                          )
-                          .toList(),
+                            title: Text(
+                              conversation.libelle ?? 'home_new_conversation'.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              _formatDate(conversation.date_create),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () {
+                              Get.to(
+                                () => AIChatScreen(
+                                  conversation: conversation,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

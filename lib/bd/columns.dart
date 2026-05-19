@@ -48,6 +48,7 @@ class BDColumnNames {
   static String Routes_date_create = "date_create";
   static String Routes_points = "points";
   static String Routes_nom = "nom";
+  static String Routes_warnings = "warnings";
 
   ///PAYMENTS
   static String Payments_key = "key";

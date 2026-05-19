@@ -8,6 +8,7 @@ import 'package:get_storage/get_storage.dart';
 // import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 // import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
+import '../core/config/app_secrets.dart';
 import '../utils/Setting.dart';
 
 class HomeController extends GetxController {
@@ -19,8 +20,7 @@ class HomeController extends GetxController {
   late StreamSubscription appBlock;
 
   late StreamSubscription appAjour;
-  String openaikey =
-      "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";
+  String openaikey = AppSecrets.openAiApiKey;
 
   var isAjour = true.obs;
   var isBlock = false.obs;

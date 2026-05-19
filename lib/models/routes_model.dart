@@ -7,6 +7,7 @@ class RoutesModel {
   String? origin_id; //location id
   String? destination_id; //location id
   List<Map<String, dynamic>>? waypoints;
+  List<Map<String, dynamic>>? warnings;
   String? date_create;
   String? points;
   String? nom;
@@ -17,6 +18,7 @@ class RoutesModel {
     this.origin_id,
     this.destination_id,
     this.waypoints,
+    this.warnings,
     this.date_create,
     this.points,
     this.nom,
@@ -31,6 +33,12 @@ class RoutesModel {
           map[BDColumnNames.Routes_waypoints] != null
               ? map[BDColumnNames.Routes_waypoints]
                   .map((wp) => wp.cast<String, dynamic>())
+                  .toList()
+              : null,
+      warnings =
+          map[BDColumnNames.Routes_warnings] != null
+              ? map[BDColumnNames.Routes_warnings]
+                  .map((warning) => warning.cast<String, dynamic>())
                   .toList()
               : null,
       date_create =
@@ -52,6 +60,7 @@ class RoutesModel {
       BDColumnNames.Routes_origin_id: origin_id,
       BDColumnNames.Routes_destination_id: destination_id,
       BDColumnNames.Routes_waypoints: waypoints,
+      BDColumnNames.Routes_warnings: warnings,
       BDColumnNames.Routes_date_create:
           date_create ?? FieldValue.serverTimestamp(),
       BDColumnNames.Routes_points: points,

@@ -1,7 +1,5 @@
-import 'package:botroad/models/user_model.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
-import 'package:botroad/utils/const/images.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -19,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mon Profil'),
+        title: Text('profile_title'.tr),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
@@ -29,14 +27,12 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 20),
-            // Photo de profil
-            CircleAvatar(
+            const CircleAvatar(
               radius: 50,
               backgroundColor: AppColors.primary,
-              child: const Icon(Icons.person, size: 50, color: Colors.white),
+              child: Icon(Icons.person, size: 50, color: Colors.white),
             ),
             const SizedBox(height: 20),
-            // Informations de l'utilisateur
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -48,27 +44,27 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     TextField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom',
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        labelText: 'profile_name'.tr,
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        prefixIcon: Icon(Icons.email_outlined),
+                      decoration: InputDecoration(
+                        labelText: 'login_email'.tr,
+                        prefixIcon: const Icon(Icons.email_outlined),
                       ),
-                      enabled: false, // Email ne peut pas être modifié
+                      enabled: false,
                     ),
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Crédits disponibles:',
-                          style: TextStyle(
+                        Text(
+                          '${'profile_available_credits'.tr}:',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -88,7 +84,6 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            // Bouton de mise à jour
             ElevatedButton(
               onPressed: () async {
                 if (_nameController.text.isNotEmpty) {
@@ -97,15 +92,15 @@ class ProfileScreen extends StatelessWidget {
                   });
                   if (success) {
                     Get.snackbar(
-                      'Succès',
-                      'Profil mis à jour avec succès',
+                      'login_verification'.tr,
+                      'profile_update_success'.tr,
                       backgroundColor: Colors.green,
                       colorText: Colors.white,
                     );
                   } else {
                     Get.snackbar(
-                      'Erreur',
-                      'Impossible de mettre à jour le profil',
+                      'login_error'.tr,
+                      'profile_update_error'.tr,
                       backgroundColor: Colors.red,
                       colorText: Colors.white,
                     );
@@ -116,10 +111,9 @@ class ProfileScreen extends StatelessWidget {
                 backgroundColor: AppColors.primary,
                 minimumSize: const Size(double.infinity, 50),
               ),
-              child: const Text('Mettre à jour le profil'),
+              child: Text('profile_update'.tr),
             ),
             const SizedBox(height: 20),
-            // Informations supplémentaires
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(
@@ -130,9 +124,9 @@ class ProfileScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Informations du compte',
-                      style: TextStyle(
+                    Text(
+                      'profile_account_info'.tr,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -140,19 +134,25 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     ListTile(
                       leading: const Icon(Icons.calendar_today),
-                      title: const Text('Date de création'),
-                      subtitle: Text(user.date_create ?? 'Non disponible'),
+                      title: Text('profile_creation_date'.tr),
+                      subtitle: Text(
+                        user.date_create ?? 'profile_not_available'.tr,
+                      ),
                     ),
                     ListTile(
                       leading: const Icon(Icons.access_time),
-                      title: const Text('Dernière connexion'),
-                      subtitle: Text(user.date_connexion ?? 'Non disponible'),
+                      title: Text('profile_last_login'.tr),
+                      subtitle: Text(
+                        user.date_connexion ?? 'profile_not_available'.tr,
+                      ),
                     ),
                     ListTile(
                       leading: const Icon(Icons.verified_user),
-                      title: const Text('Statut du compte'),
+                      title: Text('profile_account_status'.tr),
                       subtitle: Text(
-                        user.is_active == true ? 'Actif' : 'Inactif',
+                        user.is_active == true
+                            ? 'profile_status_active'.tr
+                            : 'profile_status_inactive'.tr,
                       ),
                     ),
                   ],
