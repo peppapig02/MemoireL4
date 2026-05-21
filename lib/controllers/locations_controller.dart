@@ -253,16 +253,29 @@ class LocationsController extends GetxController {
       final place = predictions.predictions.first;
       final details = await placesSdk!.fetchPlace(
         place.placeId,
-        fields: [PlaceField.Address, PlaceField.Location, PlaceField.Types],
+        fields: [
+          PlaceField.Name,
+          PlaceField.Address,
+          PlaceField.Location,
+          PlaceField.Types,
+        ],
       );
 
       if (details == null) return null;
+      final placeName =
+          details.place?.name?.trim().isNotEmpty == true
+              ? details.place!.name!
+              : place.primaryText.trim().isNotEmpty
+              ? place.primaryText
+              : (details.place?.address?.trim().isNotEmpty == true
+                    ? details.place!.address!
+                    : query.trim());
       printDebug(
-        "details : ${details.place?.address} ${details.place?.name} ${details.place?.latLng?.lat} ${details.place?.latLng?.lng}",
+        "details : ${details.place?.address} $placeName ${details.place?.latLng?.lat} ${details.place?.latLng?.lng}",
       );
       // Créer un modèle de lieu
       final location = LocationsModel(
-        nom: details.place?.name,
+        nom: placeName,
         place_id: place.placeId,
         latitude: details.place?.latLng?.lat,
         id_user: Setting.userCtrl.user.value?.key,
@@ -291,7 +304,7 @@ class LocationsController extends GetxController {
       return {
         'latitude': details.place?.latLng?.lat,
         'longitude': details.place?.latLng?.lng,
-        'name': details.place?.name,
+        'name': placeName,
         'place_id': place.placeId,
       };
     } catch (e) {

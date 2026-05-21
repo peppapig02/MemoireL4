@@ -8,6 +8,7 @@
 
 #include <cloud_firestore/cloud_firestore_plugin_c_api.h>
 #include <encrypt_decrypt_plus/encrypt_decrypt_plus_plugin_c_api.h>
+#include <firebase_app_check/firebase_app_check_plugin_c_api.h>
 #include <firebase_auth/firebase_auth_plugin_c_api.h>
 #include <firebase_core/firebase_core_plugin_c_api.h>
 #include <geolocator_windows/geolocator_windows.h>
@@ -19,6 +20,8 @@ void RegisterPlugins(flutter::PluginRegistry* registry) {
       registry->GetRegistrarForPlugin("CloudFirestorePluginCApi"));
   EncryptDecryptPlusPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("EncryptDecryptPlusPluginCApi"));
+  FirebaseAppCheckPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FirebaseAppCheckPluginCApi"));
   FirebaseAuthPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FirebaseAuthPluginCApi"));
   FirebaseCorePluginCApiRegisterWithRegistrar(

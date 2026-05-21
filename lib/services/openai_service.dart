@@ -1,17 +1,25 @@
-import 'dart:convert'; //pour encoder/décoder le JSON
-import 'package:http/http.dart' as http;//package HTTP pour faire les requêtes vers l'API OpenAI
+import 'dart:convert';
+
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 class OpenAIService {
+  OpenAIService({required this.apiKey, this.functions});
+
   final String apiKey;
   final String baseUrl = 'https://api.openai.com/v1';
-
-  OpenAIService({required this.apiKey});
+  final FirebaseFunctions? functions;
 
   Future<Map<String, dynamic>> generateResponse(
     String prompt, {
     String? context,
   }) async {
     try {
+      if (kIsWeb) {
+        return _generateResponseWithCallable(prompt, context: context);
+      }
+
       final messages = [
         if (context != null) {'role': 'system', 'content': context},
         {'role': 'user', 'content': prompt},
@@ -31,34 +39,72 @@ class OpenAIService {
         }),
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'];
-
-        // Essayer de parser la réponse comme JSON
-        try {
-          // Vérifier si la réponse est au format attendu
-          if (content.contains('{') && content.contains('}')) {
-            // Extraire la partie JSON de la réponse
-            //Parfois ChatGPT renvoie du texte au format JSON
-            //Donc tu essaies de l’extraire proprement (entre {}) et de le décoder
-            final jsonStr = content.substring(
-              content.indexOf('{'),
-              content.lastIndexOf('}') + 1,
-            );
-            return jsonDecode(jsonStr);
-          }
-        } catch (e) {
-          // Si le parsing échoue, retourner la réponse brute
-          return {'message': content};
-        }
-
-        return {'message': content};
-      } else {
+      if (response.statusCode != 200) {
         throw Exception('Failed to generate response: ${response.statusCode}');
       }
+
+      final data = jsonDecode(response.body);
+      final content = data['choices'][0]['message']['content'];
+      return _parseContent(content);
     } catch (e) {
       throw Exception('Error generating response: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> _generateResponseWithCallable(
+    String prompt, {
+    String? context,
+  }) async {
+    try {
+      final callableFunctions = functions ?? FirebaseFunctions.instance;
+      final callable = callableFunctions.httpsCallable('generateChatResponse');
+      final response = await callable.call({
+        'prompt': prompt,
+        'context': context,
+      });
+      final data = response.data;
+
+      if (data is Map) {
+        return Map<String, dynamic>.from(data);
+      }
+
+      throw Exception('Invalid response format from generateChatResponse');
+    } on FirebaseFunctionsException catch (e) {
+      throw Exception(_mapCallableError(e));
+    }
+  }
+
+  String _mapCallableError(FirebaseFunctionsException error) {
+    switch (error.code) {
+      case 'failed-precondition':
+        return "Le backend IA n'est pas encore configure. Il faut finaliser la configuration serveur OpenAI.";
+      case 'internal':
+        return "Le backend IA web n'est pas encore disponible. Verifiez que la Firebase Function a bien ete deployee et que le projet est en plan Blaze.";
+      case 'unavailable':
+        return "Le backend IA est temporairement indisponible. Reessayez dans un instant.";
+      default:
+        return error.message ??
+            "Le backend IA a renvoye une erreur (${error.code}).";
+    }
+  }
+
+  Map<String, dynamic> _parseContent(dynamic content) {
+    if (content is! String) {
+      return {'message': '$content'};
+    }
+
+    try {
+      if (content.contains('{') && content.contains('}')) {
+        final jsonStr = content.substring(
+          content.indexOf('{'),
+          content.lastIndexOf('}') + 1,
+        );
+        return Map<String, dynamic>.from(jsonDecode(jsonStr));
+      }
+    } catch (_) {
+      return {'message': content};
+    }
+
+    return {'message': content};
   }
 }

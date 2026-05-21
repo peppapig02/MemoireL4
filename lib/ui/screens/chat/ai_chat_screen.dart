@@ -1,6 +1,5 @@
 import 'package:botroad/bd/columns.dart';
 import 'package:botroad/controllers/conversations_controller.dart';
-import 'package:botroad/controllers/home_controller.dart';
 import 'package:botroad/controllers/messages_controller.dart';
 import 'package:botroad/core/config/app_secrets.dart';
 import 'package:botroad/core/services/chat_intent_service.dart';
@@ -16,7 +15,7 @@ import 'package:botroad/core/models/route_result.dart';
 import 'package:botroad/models/conversations_model.dart';
 import 'package:botroad/models/messages_model.dart';
 import 'package:botroad/models/routes_model.dart';
-import 'package:botroad/services/openai_service.dart';
+import 'package:botroad/services/gemini_service.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -39,7 +38,6 @@ class AIChatScreen extends StatefulWidget {
 class _AIChatScreenState extends State<AIChatScreen> {
   final MessagesController messagesCtrl = Setting.messagesCtrl;
   final ConversationsController conversationsCtrl = Setting.conversationsCtrl;
-  final HomeController homeCtrl = Setting.homeCtrl;
   final TextEditingController messageController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -49,7 +47,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool isLoadingMore = false;
   bool hasMoreMessages = true;
   String searchQuery = '';
-  OpenAIService? openAIService;
+  GeminiService? geminiService;
   ConversationsModel? conversations;
   static const int messagesPerPage = 20;
   DocumentSnapshot? lastDocument;
@@ -71,7 +69,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   void initState() {
     super.initState();
     conversations = widget.conversation;
-    initOpenAIService();
+    initAiServices();
     _setupScrollListener();
     _getCurrentLocation();
   }
@@ -85,8 +83,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void initOpenAIService() {
-    openAIService = OpenAIService(apiKey: homeCtrl.openaikey);
+  void initAiServices() {
+    geminiService = GeminiService();
     locationService = LocationService();
     chatNavigationService = ChatNavigationService(
       chatIntentService: ChatIntentService(),
@@ -172,8 +170,10 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
       // Rechercher les lieux
       final depart = response['depart'] as String;
       final arrivee = response['arrivee'] as String;
-      final etapes =
-          (response['etapes'] as List<dynamic>?)?.cast<String>() ?? [];
+      final etapes = _sanitizeEtapes(
+        (response['etapes'] as List<dynamic>?)?.cast<String>() ?? [],
+        arrivee,
+      );
 
       printDebug("depart : $depart");
       printDebug("arrivee : $arrivee");
@@ -219,6 +219,11 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
           Get.to(() => Iteneraire(route: route));
           return;
         }
+        await _saveBotMessage(
+          conversationId,
+          "J'ai bien compris votre trajet et retrouve les lieux, mais l'affichage automatique de l'itineraire ne fonctionne pas encore correctement sur le web. Essayez sur Android pour la carte complete, ou reformulez sans etapes intermediaires.",
+        );
+        return;
       }
 
       // Si quelque chose n'a pas fonctionné, demander à l'IA d'expliquer le problème
@@ -231,7 +236,7 @@ ${etapesPlaces.length < etapes.length ? '- Certaines étapes\n' : ''}
 Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et demande-lui de préciser ou de reformuler.
 ''';
 
-      final errorResponse = await openAIService?.generateResponse(
+      final errorResponse = await geminiService?.generateResponse(
         "Explique le problème",
         context: errorContext,
       );
@@ -501,6 +506,40 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     }
   }
 
+  List<String> _sanitizeEtapes(List<String> etapes, String arrivee) {
+    final results = <String>[];
+    final seen = <String>{};
+
+    for (final rawEtape in etapes) {
+      final etape = rawEtape.trim();
+      if (etape.isEmpty) continue;
+
+      final normalized = etape.toLowerCase();
+      if (normalized == arrivee.trim().toLowerCase()) continue;
+
+      final looksLikeInstruction = [
+        'tourner',
+        'continuer',
+        'rejoindre',
+        'suivre',
+        'prendre l',
+        'prendre la',
+        'prendre le',
+        'prendre les',
+        'direction du',
+        'direction de',
+        'traversant',
+      ].any(normalized.contains);
+
+      if (looksLikeInstruction) continue;
+      if (seen.add(normalized)) {
+        results.add(etape);
+      }
+    }
+
+    return results;
+  }
+
   Future<void> _saveBotMessage(String conversationId, String message) async {
     messagesCtrl.messages.value = MessagesModel(
       id_conversation: conversationId,
@@ -515,6 +554,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   Future<void> _sendMessage() async {
     final content = messageController.text.trim();
     if (content.isEmpty) return;
+    String? conversationId = widget.conversation?.key ?? conversations?.key;
 
     messageController.clear();
     setState(() {
@@ -523,7 +563,6 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     });
 
     try {
-      String? conversationId = widget.conversation?.key ?? conversations?.key;
 
       // Si pas de conversation, en créer une nouvelle
       if (conversationId == null) {
@@ -563,7 +602,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       // Generate response using our custom service with context
       final context = _buildConversationContext();
-      final response = await openAIService?.generateResponse(
+      final response = await geminiService?.generateResponse(
         content,
         context: context,
       );
@@ -574,9 +613,20 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       _scrollToBottom();
     } catch (e) {
+      final friendlyError =
+          e
+              .toString()
+              .replaceFirst('Exception: Error generating response: ', '')
+              .replaceFirst('Exception: Error generating Gemini response: ', '')
+              .replaceFirst('Exception: ', '');
+
+      if (conversationId != null) {
+        await _saveBotMessage(conversationId, friendlyError);
+      }
+
       Get.snackbar(
         'chat_send_error_title'.tr,
-        'chat_send_error_body'.trParams({'error': '$e'}),
+        'chat_send_error_body'.trParams({'error': friendlyError}),
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
