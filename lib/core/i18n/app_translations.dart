@@ -173,6 +173,12 @@ class AppTranslations extends Translations {
           'itinerary_title': 'Itineraire',
           'itinerary_location_permission_error':
               'La permission de localisation est necessaire pour la navigation',
+          'itinerary_route_unavailable':
+              'Impossible de charger cet itineraire pour le moment.',
+          'itinerary_map_error':
+              'La carte n a pas pu etre chargee correctement. Verifiez votre connexion ou la configuration Google Maps.',
+          'itinerary_navigation_network_error':
+              'La navigation a ete interrompue a cause d un probleme reseau. Reessayez quand la connexion revient.',
           'itinerary_arrived_title': 'Arrivee',
           'itinerary_arrived_message': 'Vous etes arrive a destination !',
           'itinerary_reported_route': 'Route signalee',
@@ -194,6 +200,14 @@ class AppTranslations extends Translations {
           'chat_send_error_title': 'Erreur',
           'chat_send_error_body':
               'Une erreur est survenue lors de l envoi du message: @error',
+          'chat_network_error_message':
+              'Connexion reseau indisponible. Verifiez Internet puis reessayez.',
+          'chat_history_network_error':
+              'Impossible de charger davantage de messages pour le moment a cause du reseau.',
+          'network_status_offline':
+              'Vous etes hors ligne. Certaines fonctionnalites peuvent etre indisponibles.',
+          'network_status_online':
+              'Connexion retablie.',
           'register_name': 'Nom',
           'register_confirm_password': 'Confirmation mot de passe',
           'register_submit': 'S inscrire',
@@ -318,6 +332,12 @@ class AppTranslations extends Translations {
           'itinerary_title': 'Route',
           'itinerary_location_permission_error':
               'Location permission is required for navigation',
+          'itinerary_route_unavailable':
+              'This route is unavailable right now.',
+          'itinerary_map_error':
+              'The map could not load correctly. Check your connection or Google Maps configuration.',
+          'itinerary_navigation_network_error':
+              'Navigation was interrupted by a network issue. Please try again when the connection is back.',
           'itinerary_arrived_title': 'Arrival',
           'itinerary_arrived_message': 'You have arrived at your destination!',
           'itinerary_reported_route': 'Reported route',
@@ -339,6 +359,13 @@ class AppTranslations extends Translations {
           'chat_send_error_title': 'Error',
           'chat_send_error_body':
               'An error occurred while sending the message: @error',
+          'chat_network_error_message':
+              'Network connection is unavailable. Check Internet and try again.',
+          'chat_history_network_error':
+              'Unable to load more messages right now because of a network issue.',
+          'network_status_offline':
+              'You are offline. Some features may be unavailable.',
+          'network_status_online': 'Connection restored.',
           'register_name': 'Name',
           'register_confirm_password': 'Confirm password',
           'register_submit': 'Register',
@@ -461,6 +488,12 @@ class AppTranslations extends Translations {
           'itinerary_title': 'Itineraire',
           'itinerary_location_permission_error':
               'Permission ya localisation esengeli mpo na navigation',
+          'itinerary_route_unavailable':
+              'Ekoki te kolakisa itineraire oyo mpo na mwa tango.',
+          'itinerary_map_error':
+              'Carte ekoki te kofungwama malamu. Tala connexion na yo to configuration ya Google Maps.',
+          'itinerary_navigation_network_error':
+              'Navigation etelemaki mpo na probleme ya reseau. Meka lisusu soki connexion ezongi.',
           'itinerary_arrived_title': 'Kokoma',
           'itinerary_arrived_message': 'Okomi na esika okeyi!',
           'itinerary_reported_route': 'Route signalée',
@@ -482,6 +515,13 @@ class AppTranslations extends Translations {
           'chat_send_error_title': 'Libunga',
           'chat_send_error_body':
               'Libunga moko esalemi tango ya kotinda message: @error',
+          'chat_network_error_message':
+              'Connexion reseau ezali te. Tala Internet mpe meka lisusu.',
+          'chat_history_network_error':
+              'Ekoki te komema ba messages mosusu sikoyo mpo na probleme ya reseau.',
+          'network_status_offline':
+              'Ozali hors ligne. Misala mosusu ekoki kozala te.',
+          'network_status_online': 'Connexion ezongi.',
           'register_name': 'Kombo',
           'register_confirm_password': 'Kondimisa mot de passe',
           'register_submit': 'Komikomisa',
@@ -608,6 +648,12 @@ class AppTranslations extends Translations {
           'itinerary_title': 'Njia',
           'itinerary_location_permission_error':
               'Ruhusa ya eneo inahitajika kwa urambazaji',
+          'itinerary_route_unavailable':
+              'Njia hii haiwezi kupakiwa kwa sasa.',
+          'itinerary_map_error':
+              'Ramani haikuweza kufunguka vizuri. Angalia muunganisho wako au usanidi wa Google Maps.',
+          'itinerary_navigation_network_error':
+              'Urambazaji umesimamishwa kwa sababu ya tatizo la mtandao. Jaribu tena muunganisho ukirudi.',
           'itinerary_arrived_title': 'Mwisho',
           'itinerary_arrived_message': 'Umefika unakoenda!',
           'itinerary_reported_route': 'Njia iliyoripotiwa',
@@ -629,6 +675,13 @@ class AppTranslations extends Translations {
           'chat_send_error_title': 'Hitilafu',
           'chat_send_error_body':
               'Hitilafu imetokea wakati wa kutuma ujumbe: @error',
+          'chat_network_error_message':
+              'Muunganisho wa mtandao haupatikani. Angalia Internet kisha ujaribu tena.',
+          'chat_history_network_error':
+              'Haiwezekani kupakia ujumbe zaidi kwa sasa kwa sababu ya tatizo la mtandao.',
+          'network_status_offline':
+              'Uko nje ya mtandao. Baadhi ya vipengele vinaweza visitumike.',
+          'network_status_online': 'Muunganisho umerudi.',
           'register_name': 'Jina',
           'register_confirm_password': 'Thibitisha nenosiri',
           'register_submit': 'Jisajili',

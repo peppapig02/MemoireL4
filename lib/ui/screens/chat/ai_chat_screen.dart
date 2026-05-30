@@ -7,6 +7,7 @@ import 'package:botroad/core/services/chat_navigation_service.dart';
 import 'package:botroad/core/services/geocoding_service.dart';
 import 'package:botroad/core/services/location_service.dart';
 import 'package:botroad/core/services/nearby_places_service.dart';
+import 'package:botroad/core/services/network_status_service.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
@@ -22,6 +23,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:botroad/ui/screens/home/iteneraire.dart';
+import 'package:botroad/ui/widgets/network_status_banner.dart';
 import 'package:botroad/controllers/locations_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:geolocator/geolocator.dart';
@@ -46,6 +48,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool isSearching = false;
   bool isLoadingMore = false;
   bool hasMoreMessages = true;
+  bool _didShowMessagesStreamError = false;
   String searchQuery = '';
   GeminiService? geminiService;
   ConversationsModel? conversations;
@@ -59,6 +62,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   late final LocationService locationService;
   late final ChatNavigationService chatNavigationService;
   late final NearbyPlacesService nearbyPlacesService;
+  late final NetworkStatusService networkStatusService;
   late final RoadReportService roadReportService;
   late final RouteRiskService routeRiskService;
   late final RoutingService routingService;
@@ -94,6 +98,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
     nearbyPlacesService = NearbyPlacesService(
       apiKey: AppSecrets.googleMapsApiKey,
     );
+    networkStatusService =
+        Get.isRegistered<NetworkStatusService>()
+            ? Get.find<NetworkStatusService>()
+            : Get.put(NetworkStatusService(), permanent: true);
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
     routingService = RoutingService(
@@ -117,6 +125,42 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (conversationMemory.length > maxMemorySize) {
       conversationMemory.removeLast();
     }
+  }
+
+  bool _isNetworkError(Object error) {
+    final normalized = error.toString().toLowerCase();
+    return normalized.contains('unable to resolve host') ||
+        normalized.contains('unknownhostexception') ||
+        normalized.contains('socketexception') ||
+        normalized.contains('failed to resolve name') ||
+        normalized.contains('network is unreachable') ||
+        normalized.contains('status{code=unavailable') ||
+        normalized.contains('code=unavailable') ||
+        normalized.contains('end of stream or ioexception') ||
+        normalized.contains('ioexception') ||
+        normalized.contains('broken pipe');
+  }
+
+  String _toFriendlyErrorMessage(Object error) {
+    if (_isNetworkError(error)) {
+      networkStatusService.markOffline();
+      return 'chat_network_error_message'.tr;
+    }
+
+    return error
+        .toString()
+        .replaceFirst('Exception: Error generating response: ', '')
+        .replaceFirst('Exception: Error generating Gemini response: ', '')
+        .replaceFirst('Exception: ', '');
+  }
+
+  void _showErrorSnackBar(String message) {
+    Get.snackbar(
+      'chat_send_error_title'.tr,
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+    );
   }
 
   Future<void> _getCurrentLocation() async {
@@ -541,14 +585,18 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   }
 
   Future<void> _saveBotMessage(String conversationId, String message) async {
-    messagesCtrl.messages.value = MessagesModel(
-      id_conversation: conversationId,
-      sender: 'bot',
-      content: message,
-      date_create: DateTime.now().toString(),
-    );
-    await messagesCtrl.addMessages();
-    _updateConversationMemory('bot', message);
+    try {
+      messagesCtrl.messages.value = MessagesModel(
+        id_conversation: conversationId,
+        sender: 'bot',
+        content: message,
+        date_create: DateTime.now().toString(),
+      );
+      await messagesCtrl.addMessages();
+      _updateConversationMemory('bot', message);
+    } catch (e) {
+      printDebug("error saveBotMessage ::: $e");
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -596,6 +644,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       final handledByMvp = await _tryHandleMvpNavigation(content, conversationId);
       if (handledByMvp) {
+        networkStatusService.markOnline();
         _scrollToBottom();
         return;
       }
@@ -611,24 +660,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         await _handleStructuredResponse(response, conversationId);
       }
 
+      networkStatusService.markOnline();
       _scrollToBottom();
     } catch (e) {
-      final friendlyError =
-          e
-              .toString()
-              .replaceFirst('Exception: Error generating response: ', '')
-              .replaceFirst('Exception: Error generating Gemini response: ', '')
-              .replaceFirst('Exception: ', '');
+      final friendlyError = _toFriendlyErrorMessage(e);
 
       if (conversationId != null) {
         await _saveBotMessage(conversationId, friendlyError);
       }
 
-      Get.snackbar(
-        'chat_send_error_title'.tr,
+      _showErrorSnackBar(
         'chat_send_error_body'.trParams({'error': friendlyError}),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
       );
       printDebug("error sendMessage ::: $e");
     } finally {
@@ -684,6 +726,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         hasMoreMessages = snapshot.docs.length == messagesPerPage;
       });
     } catch (e) {
+      if (_isNetworkError(e)) {
+        networkStatusService.markOffline();
+        _showErrorSnackBar('chat_history_network_error'.tr);
+      }
       printDebug("Error loading more messages: $e");
     } finally {
       setState(() {
@@ -814,6 +860,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       ),
       body: Column(
         children: [
+          const NetworkStatusBanner(),
           if (isSearching)
             Container(
               padding: const EdgeInsets.all(8),
@@ -851,14 +898,33 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               stream: _getMessagesStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
+                  final friendlyError = _toFriendlyErrorMessage(snapshot.error!);
+                  if (!_didShowMessagesStreamError) {
+                    _didShowMessagesStreamError = true;
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _showErrorSnackBar(
+                          'chat_send_error_body'.trParams({
+                            'error': friendlyError,
+                          }),
+                        );
+                      }
+                    });
+                  }
                   return Center(
-                    child: Text(
-                      'chat_error_prefix'.trParams({
-                        'error': '${snapshot.error}',
-                      }),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'chat_error_prefix'.trParams({
+                          'error': friendlyError,
+                        }),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   );
                 }
+                networkStatusService.markOnline();
+                _didShowMessagesStreamError = false;
                 // printDebug(
                 //   "snapshot.hasData: ${snapshot.hasData} et snapshot.connectionState: ${snapshot.connectionState}",
                 // );

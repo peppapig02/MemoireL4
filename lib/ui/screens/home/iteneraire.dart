@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:botroad/core/services/network_status_service.dart';
 import 'package:botroad/models/routes_model.dart';
+import 'package:botroad/ui/widgets/network_status_banner.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,12 +27,18 @@ class _IteneraireState extends State<Iteneraire> {
   Set<Polyline> polylines = {};
   LatLngBounds? bounds;
   bool isNavigating = false;
+  String? routeErrorMessage;
+  late final NetworkStatusService networkStatusService;
   Position? currentPosition;
   Timer? navigationTimer;
 
   @override
   void initState() {
     super.initState();
+    networkStatusService =
+        Get.isRegistered<NetworkStatusService>()
+            ? Get.find<NetworkStatusService>()
+            : Get.put(NetworkStatusService(), permanent: true);
     _initializeMap();
   }
 
@@ -41,81 +49,102 @@ class _IteneraireState extends State<Iteneraire> {
   }
 
   void _initializeMap() {
-    if (widget.route?.points == null) {
+    if (widget.route?.points == null || widget.route!.points!.trim().isEmpty) {
+      routeErrorMessage = 'itinerary_route_unavailable'.tr;
+      networkStatusService.markOffline();
       return;
     }
 
-    final points = widget.route!.points!.split('|').map((point) {
-      final coords = point.split(',');
-      return LatLng(double.parse(coords[0]), double.parse(coords[1]));
-    }).toList();
+    try {
+      final points = widget.route!.points!.split('|').map((point) {
+        final coords = point.split(',');
+        return LatLng(double.parse(coords[0]), double.parse(coords[1]));
+      }).toList();
 
-    markers.add(
-      Marker(
-        markerId: const MarkerId('depart'),
-        position: points.first,
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          BitmapDescriptor.hueGreen,
-        ),
-        infoWindow: InfoWindow(title: 'itinerary_depart'.tr),
-      ),
-    );
-
-    markers.add(
-      Marker(
-        markerId: const MarkerId('arrivee'),
-        position: points.last,
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        infoWindow: InfoWindow(title: 'itinerary_arrival'.tr),
-      ),
-    );
-
-    if (widget.route?.waypoints != null) {
-      for (var i = 0; i < widget.route!.waypoints!.length; i++) {
-        final waypoint = widget.route!.waypoints![i];
-        markers.add(
-          Marker(
-            markerId: MarkerId('etape_$i'),
-            position: LatLng(
-              waypoint['latitude'] as double,
-              waypoint['longitude'] as double,
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue,
-            ),
-            infoWindow: InfoWindow(
-              title: 'itinerary_step'.trParams({'index': '${i + 1}'}),
-              snippet: waypoint['name'] as String?,
-            ),
-          ),
-        );
+      if (points.length < 2) {
+        routeErrorMessage = 'itinerary_route_unavailable'.tr;
+        networkStatusService.markOffline();
+        return;
       }
+
+      markers.add(
+        Marker(
+          markerId: const MarkerId('depart'),
+          position: points.first,
+          icon: BitmapDescriptor.defaultMarkerWithHue(
+            BitmapDescriptor.hueGreen,
+          ),
+          infoWindow: InfoWindow(title: 'itinerary_depart'.tr),
+        ),
+      );
+
+      markers.add(
+        Marker(
+          markerId: const MarkerId('arrivee'),
+          position: points.last,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+          infoWindow: InfoWindow(title: 'itinerary_arrival'.tr),
+        ),
+      );
+
+      if (widget.route?.waypoints != null) {
+        for (var i = 0; i < widget.route!.waypoints!.length; i++) {
+          final waypoint = widget.route!.waypoints![i];
+          markers.add(
+            Marker(
+              markerId: MarkerId('etape_$i'),
+              position: LatLng(
+                waypoint['latitude'] as double,
+                waypoint['longitude'] as double,
+              ),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueBlue,
+              ),
+              infoWindow: InfoWindow(
+                title: 'itinerary_step'.trParams({'index': '${i + 1}'}),
+                snippet: waypoint['name'] as String?,
+              ),
+            ),
+          );
+        }
+      }
+
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route'),
+          points: points,
+          color: AppColors.primary,
+          width: 5,
+        ),
+      );
+
+      bounds = LatLngBounds(
+        southwest: LatLng(
+          points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b),
+          points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b),
+        ),
+        northeast: LatLng(
+          points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b),
+          points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b),
+        ),
+      );
+      networkStatusService.markOnline();
+    } catch (e) {
+      routeErrorMessage = 'itinerary_route_unavailable'.tr;
+      networkStatusService.markOffline();
+      printDebug('Erreur lors de l initialisation de la carte: $e');
     }
-
-    polylines.add(
-      Polyline(
-        polylineId: const PolylineId('route'),
-        points: points,
-        color: AppColors.primary,
-        width: 5,
-      ),
-    );
-
-    bounds = LatLngBounds(
-      southwest: LatLng(
-        points.map((p) => p.latitude).reduce((a, b) => a < b ? a : b),
-        points.map((p) => p.longitude).reduce((a, b) => a < b ? a : b),
-      ),
-      northeast: LatLng(
-        points.map((p) => p.latitude).reduce((a, b) => a > b ? a : b),
-        points.map((p) => p.longitude).reduce((a, b) => a > b ? a : b),
-      ),
-    );
   }
 
   void _recenterMap() {
     if (mapController != null && bounds != null) {
-      mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds!, 50));
+      mapController!
+          .animateCamera(CameraUpdate.newLatLngBounds(bounds!, 50))
+          .catchError((error) {
+            networkStatusService.markOffline();
+            Setting.showMessage('login_error'.tr, 'itinerary_map_error'.tr);
+            printDebug('Erreur lors du recentrage de la carte: $error');
+          });
     }
   }
 
@@ -130,6 +159,13 @@ class _IteneraireState extends State<Iteneraire> {
         );
         return;
       }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      Setting.showMessage(
+        'login_error'.tr,
+        'itinerary_location_permission_error'.tr,
+      );
+      return;
     }
 
     setState(() {
@@ -150,6 +186,7 @@ class _IteneraireState extends State<Iteneraire> {
             ),
           );
         });
+        networkStatusService.markOnline();
 
         if (widget.route?.points != null) {
           final points = widget.route!.points!.split('|');
@@ -176,6 +213,23 @@ class _IteneraireState extends State<Iteneraire> {
           }
         }
       } catch (e) {
+        final normalized = e.toString().toLowerCase();
+        final message =
+            normalized.contains('unable to resolve host') ||
+                    normalized.contains('socketexception') ||
+                    normalized.contains('ioexception')
+                ? 'itinerary_navigation_network_error'.tr
+                : 'itinerary_location_permission_error'.tr;
+        if (normalized.contains('unable to resolve host') ||
+            normalized.contains('socketexception') ||
+            normalized.contains('ioexception')) {
+          networkStatusService.markOffline();
+        }
+        Setting.showMessage('login_error'.tr, message);
+        navigationTimer?.cancel();
+        setState(() {
+          isNavigating = false;
+        });
         printDebug('Erreur lors de la mise a jour de la position: $e');
       }
     });
@@ -207,52 +261,99 @@ class _IteneraireState extends State<Iteneraire> {
         backgroundColor: Colors.transparent,
         leading: const BackButton(color: Colors.black),
       ),
-      body: SizedBox(
-        height: height,
-        width: width,
-        child: Stack(
-          children: [
-            GoogleMap(
-              initialCameraPosition: CameraPosition(target: center, zoom: 12),
-              onMapCreated: (controller) {
-                mapController = controller;
-                if (bounds != null) {
-                  controller.animateCamera(
-                    CameraUpdate.newLatLngBounds(bounds!, 50),
-                  );
-                }
-              },
-              markers: markers,
-              polylines: polylines,
-              myLocationEnabled: true,
-              myLocationButtonEnabled: true,
-              zoomControlsEnabled: true,
-              mapToolbarEnabled: false,
+      body: routeErrorMessage != null
+          ? Column(
+              children: [
+                const NetworkStatusBanner(),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        routeErrorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                const NetworkStatusBanner(),
+                Expanded(
+                  child: SizedBox(
+                    height: height,
+                    width: width,
+                    child: Stack(
+                      children: [
+                        GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: center,
+                            zoom: 12,
+                          ),
+                          onMapCreated: (controller) {
+                            mapController = controller;
+                            if (bounds != null) {
+                              controller
+                                  .animateCamera(
+                                    CameraUpdate.newLatLngBounds(bounds!, 50),
+                                  )
+                                  .then((_) {
+                                    networkStatusService.markOnline();
+                                  })
+                                  .catchError((error) {
+                                    networkStatusService.markOffline();
+                                    Setting.showMessage(
+                                      'login_error'.tr,
+                                      'itinerary_map_error'.tr,
+                                    );
+                                    printDebug(
+                                      'Erreur lors du cadrage initial de la carte: $error',
+                                    );
+                                  });
+                            }
+                          },
+                          markers: markers,
+                          polylines: polylines,
+                          myLocationEnabled: true,
+                          myLocationButtonEnabled: true,
+                          zoomControlsEnabled: true,
+                          mapToolbarEnabled: false,
+                        ),
+                        Positioned(
+                          right: 16,
+                          bottom: height * 0.45,
+                          child: FloatingActionButton(
+                            heroTag: 'recenter',
+                            onPressed: _recenterMap,
+                            backgroundColor: Colors.white,
+                            child: Icon(
+                              LucideIcons.maximize2,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: NavigationBottomSheet(
+                            route: widget.route,
+                            onStartNavigation:
+                                isNavigating
+                                    ? _stopNavigation
+                                    : _startNavigation,
+                            isNavigating: isNavigating,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Positioned(
-              right: 16,
-              bottom: height * 0.45,
-              child: FloatingActionButton(
-                heroTag: 'recenter',
-                onPressed: _recenterMap,
-                backgroundColor: Colors.white,
-                child: Icon(LucideIcons.maximize2, color: AppColors.primary),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: NavigationBottomSheet(
-                route: widget.route,
-                onStartNavigation:
-                    isNavigating ? _stopNavigation : _startNavigation,
-                isNavigating: isNavigating,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
