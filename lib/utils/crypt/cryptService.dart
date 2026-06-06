@@ -1,8 +1,6 @@
 import 'package:encrypt_decrypt_plus/encrypt_decrypt/xor.dart';
 import 'package:flutter/foundation.dart';
 
-import 'encryption.dart';
-
 class CryptDecrypt {
   String keycrypt = "botroad#";
 

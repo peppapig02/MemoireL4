@@ -261,15 +261,14 @@ class LocationsController extends GetxController {
         ],
       );
 
-      if (details == null) return null;
       final placeName =
           details.place?.name?.trim().isNotEmpty == true
               ? details.place!.name!
               : place.primaryText.trim().isNotEmpty
               ? place.primaryText
               : (details.place?.address?.trim().isNotEmpty == true
-                    ? details.place!.address!
-                    : query.trim());
+                  ? details.place!.address!
+                  : query.trim());
       printDebug(
         "details : ${details.place?.address} $placeName ${details.place?.latLng?.lat} ${details.place?.latLng?.lng}",
       );
@@ -278,7 +277,7 @@ class LocationsController extends GetxController {
         nom: placeName,
         place_id: place.placeId,
         latitude: details.place?.latLng?.lat,
-        id_user: Setting.userCtrl.user.value?.key,
+        id_user: Setting.userCtrl.user.value.key,
         longitude: details.place?.latLng?.lng,
       );
 

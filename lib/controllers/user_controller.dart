@@ -312,8 +312,6 @@ class UserController extends GetxController {
         password: user.value.password ?? "",
       );
       Setting.user = r.user;
-      var old = await getOneUser(r.user!.uid);
-
       await Setting.fUser.doc(r.user!.uid).set(user.value.toJson());
       var res2 = await Setting.fUser.doc(r.user!.uid).get();
       user.value = UserModel.fromJson(res2.data() as Map<String, dynamic>);

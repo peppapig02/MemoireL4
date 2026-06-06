@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class TextFieldCustum extends StatelessWidget {
-  String? hintText;
-  bool obscureText = false;
+  final String? hintText;
+  final bool obscureText;
 
-  TextFieldCustum({
+  const TextFieldCustum({
     super.key,
     this.hintText,
     this.obscureText = false,

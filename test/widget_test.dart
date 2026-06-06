@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:botroad/core/models/route_segment.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:botroad/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('RouteSegment serializes route data', () {
+    const segment = RouteSegment(
+      id: 'segment-1',
+      routeId: 'route-1',
+      instruction: 'Continuer tout droit',
+      startLat: -4.32,
+      startLng: 15.31,
+      endLat: -4.33,
+      endLng: 15.32,
+      distance: 1200,
+      duration: 180,
+      riskLevel: 'low',
+      relatedReports: ['report-1'],
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    final json = segment.toJson();
+    final parsed = RouteSegment.fromJson(json);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(parsed.id, 'segment-1');
+    expect(parsed.routeId, 'route-1');
+    expect(parsed.instruction, 'Continuer tout droit');
+    expect(parsed.distance, 1200);
+    expect(parsed.relatedReports, ['report-1']);
   });
 }

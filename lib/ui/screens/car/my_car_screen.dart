@@ -253,7 +253,7 @@ class _MyCarScreenState extends State<MyCarScreen> {
                       ),
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
-                        value: _selectedMode,
+                        initialValue: _selectedMode,
                         items:
                             _drivingModes
                                 .map(
@@ -413,7 +413,7 @@ class _StatChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.16),
+        color: Colors.white.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white24),
       ),

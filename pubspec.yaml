@@ -43,6 +43,7 @@ dependencies:
   flutter_google_places_sdk: 
   permission_handler: ^12.0.0+1
   url_launcher: ^6.3.1
+  encrypt: ^5.0.3
   encrypt_decrypt_plus: ^1.6.0
   firebase_auth: 
   firebase_core: 

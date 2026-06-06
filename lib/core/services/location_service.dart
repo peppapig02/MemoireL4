@@ -6,10 +6,7 @@ class DeviceLocation {
   final double latitude;
   final double longitude;
 
-  const DeviceLocation({
-    required this.latitude,
-    required this.longitude,
-  });
+  const DeviceLocation({required this.latitude, required this.longitude});
 }
 
 class LocationResolution {
@@ -78,7 +75,7 @@ class LocationService {
     }
 
     final position = await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
     );
 
     return DeviceLocation(

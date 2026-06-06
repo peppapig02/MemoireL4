@@ -31,10 +31,7 @@ class GeocodingService {
   final List<String> countries;
   FlutterGooglePlacesSdk? _placesSdk;
 
-  GeocodingService({
-    required this.apiKey,
-    this.countries = const ['CD'],
-  });
+  GeocodingService({required this.apiKey, this.countries = const ['CD']});
 
   Future<GeocodingResult?> geocodePlace(String placeName) async {
     try {
@@ -56,14 +53,10 @@ class GeocodingService {
       final firstPrediction = predictions.predictions.first;
       final details = await placesSdk.fetchPlace(
         firstPrediction.placeId,
-        fields: [
-          PlaceField.Name,
-          PlaceField.Address,
-          PlaceField.Location,
-        ],
+        fields: [PlaceField.Name, PlaceField.Address, PlaceField.Location],
       );
 
-      final place = details?.place;
+      final place = details.place;
       final latLng = place?.latLng;
       if (place == null || latLng == null) {
         return null;
