@@ -6,7 +6,6 @@ class BDColumnNames {
   static String User_email = "email";
   static String User_password = "password";
   static String User_google_id = "google_id";
-  static String User_credits = "credits";
   static String User_nom = "nom";
   static String User_date_create = "date_create";
   static String User_date_active = "date_active";
@@ -49,17 +48,9 @@ class BDColumnNames {
   static String Routes_points = "points";
   static String Routes_nom = "nom";
   static String Routes_warnings = "warnings";
-
-  ///PAYMENTS
-  static String Payments_key = "key";
-  static String Payments_id_user = "id_user";
-  static String Payments_method = "method";
-  static String Payments_amount = "amount";
-  static String Payments_credits_added = "credits_added";
-  static String Payments_status = "status";
-  static String Payments_reference = "reference";
-  static String Payments_date_create = "date_create";
-  static String Payments_date_statut = "date_statut";
+  static String Routes_segments = "segments";
+  static String Routes_mode = "mode";
+  static String Routes_risk_score = "risk_score";
 
   ///TRENDING_LOCATIONS
   static String Trending_locations_key = "key";

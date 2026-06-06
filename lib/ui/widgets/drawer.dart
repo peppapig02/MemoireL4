@@ -1,9 +1,10 @@
 import 'package:botroad/core/i18n/app_translations.dart';
 import 'package:botroad/models/user_model.dart';
 import 'package:botroad/ui/screens/about/about_screen.dart';
+import 'package:botroad/ui/screens/alerts/alerts_screen.dart';
 import 'package:botroad/ui/screens/car/my_car_screen.dart';
-import 'package:botroad/ui/screens/credits/buy_credits_screen.dart';
 import 'package:botroad/ui/screens/history/conversations_history_screen.dart';
+import 'package:botroad/ui/screens/history/trip_alerts_history_screen.dart';
 import 'package:botroad/ui/screens/profile/profile_screen.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
@@ -12,13 +13,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class DrawerCustom extends StatelessWidget {
-  DrawerCustom({super.key});
-
-  UserModel? user;
+  const DrawerCustom({super.key});
 
   void _showLanguageSheet() {
-    final currentCode =
-        AppTranslations.codeFromLocale(Get.locale ?? AppTranslations.fallback);
+    final currentCode = AppTranslations.codeFromLocale(
+      Get.locale ?? AppTranslations.fallback,
+    );
 
     Get.bottomSheet(
       Container(
@@ -33,10 +33,7 @@ class DrawerCustom extends StatelessWidget {
           children: [
             Text(
               'drawer_choose_language'.tr,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             ...[
@@ -68,9 +65,10 @@ class DrawerCustom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    user = Setting.userCtrl.user.value;
-    final currentLanguageCode =
-        AppTranslations.codeFromLocale(Get.locale ?? AppTranslations.fallback);
+    final UserModel user = Setting.userCtrl.user.value;
+    final currentLanguageCode = AppTranslations.codeFromLocale(
+      Get.locale ?? AppTranslations.fallback,
+    );
 
     return Drawer(
       shadowColor: Colors.transparent,
@@ -90,16 +88,12 @@ class DrawerCustom extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    user?.nom ?? '',
+                    user.nom ?? '',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
-                  ),
-                  Text(
-                    '${'drawer_credits'.tr}: ${user?.credits ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
                   ),
                 ],
               ),
@@ -132,6 +126,22 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.warning_amber_rounded),
+            title: const Text('Alertes route'),
+            onTap: () {
+              Navigator.pop(context);
+              Get.to(() => const AlertsScreen());
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.route),
+            title: const Text('Alertes par trajet'),
+            onTap: () {
+              Navigator.pop(context);
+              Get.to(() => const TripAlertsHistoryScreen());
+            },
+          ),
+          ListTile(
             leading: const Icon(Icons.directions_car),
             title: Text('drawer_car'.tr),
             onTap: () {
@@ -146,17 +156,6 @@ class DrawerCustom extends StatelessWidget {
             onTap: () {
               Navigator.pop(context);
               _showLanguageSheet();
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.credit_card),
-            title: Text(
-              'drawer_buy_credits'.tr,
-              style: const TextStyle(color: Colors.blue),
-            ),
-            onTap: () {
-              Navigator.pop(context);
-              Get.to(() => const BuyCreditsScreen());
             },
           ),
           const Divider(),

@@ -37,17 +37,6 @@ class ChatScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Center(
-              child: Text(
-                'Credits : 8',
-                style: TextStyle(color: Color(0xFF2D3B44), fontSize: 16),
-              ),
-            ),
-          ),
-        ],
       ),
       body:
           msgs.isEmpty

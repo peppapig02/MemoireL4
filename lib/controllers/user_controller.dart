@@ -314,8 +314,6 @@ class UserController extends GetxController {
       Setting.user = r.user;
       var old = await getOneUser(r.user!.uid);
 
-      
-
       await Setting.fUser.doc(r.user!.uid).set(user.value.toJson());
       var res2 = await Setting.fUser.doc(r.user!.uid).get();
       user.value = UserModel.fromJson(res2.data() as Map<String, dynamic>);
@@ -388,7 +386,6 @@ class UserController extends GetxController {
           google_id: userCredential.user!.uid,
           nom: userCredential.user!.displayName,
           is_active: true,
-          credits: "5",
           is_admin: false,
         );
 
@@ -485,51 +482,5 @@ class UserController extends GetxController {
     }
 
     return false;
-  }
-
-  ///ajouter du crédit à un utilisateur
-  Future<bool> addCredits(String userId, int amount) async {
-    try {
-      await Setting.firestore.runTransaction((transaction) async {
-        // Get the current user document
-        final userDoc = await transaction.get(Setting.fUser.doc(userId));
-        if (!userDoc.exists) {
-          throw Exception('User not found');
-        }
-
-        // Get current credits and convert to int
-        final data = userDoc.data() as Map<String, dynamic>;
-        final currentCredits =
-            int.tryParse(
-              Setting.encrypt.decrypt(data[BDColumnNames.User_credits] ?? "0"),
-            ) ??
-            0;
-
-        // Calculate new credits
-        final newCredits = currentCredits + amount;
-
-        // Update the document with new credits
-        transaction.update(Setting.fUser.doc(userId), {
-          BDColumnNames.User_credits: Setting.encrypt.encrypt(
-            newCredits.toString(),
-          ),
-        });
-      });
-
-      // Refresh the user data after transaction
-      if (user.value.key == userId) {
-        var res = await getOneUser(userId);
-        if (res != null) {
-          user.value = res;
-          saveUserLocal();
-        }
-      }
-
-      return true;
-    } catch (e) {
-      printDebug("Error adding credits: $e");
-      messageErreur = "Erreur lors de l'ajout des crédits";
-      return false;
-    }
   }
 }

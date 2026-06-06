@@ -1,4 +1,4 @@
-import 'package:botroad/ui/screens/splash/introduction/presentation.dart';
+import 'package:botroad/ui/screens/home/home.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/textfield.dart';
 import 'package:botroad/utils/Setting.dart';
@@ -54,7 +54,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       nom: _nameController.text,
       is_active: true,
       is_admin: false,
-      credits: '5',
       email: _emailController.text,
       password: _passwordController.text,
     );
@@ -63,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
 
     if (success) {
-      Get.offAll(() => const Presentation());
+      Get.offAll(() => const HomeScreen());
     } else {
       Setting.showMessage(
         'login_error'.tr,

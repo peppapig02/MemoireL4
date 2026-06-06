@@ -58,27 +58,6 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       enabled: false,
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          '${'profile_available_credits'.tr}:',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          user.credits ?? '0',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),

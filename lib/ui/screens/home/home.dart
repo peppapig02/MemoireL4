@@ -1,7 +1,6 @@
 import 'package:botroad/models/conversations_model.dart';
 import 'package:botroad/models/user_model.dart';
 import 'package:botroad/ui/screens/chat/ai_chat_screen.dart';
-import 'package:botroad/ui/screens/credits/buy_credits_screen.dart';
 import 'package:botroad/ui/screens/history/conversations_history_screen.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/drawer.dart';
@@ -37,10 +36,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final conversations = await Setting.conversationsCtrl.getConversationsOfUser(
-        Setting.userCtrl.user.value.key!,
-        limit: 3,
-      );
+      final conversations = await Setting.conversationsCtrl
+          .getConversationsOfUser(Setting.userCtrl.user.value.key!, limit: 3);
 
       if (conversations != null) {
         setState(() {
@@ -150,46 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'home_credit_level'.tr,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  Text(
-                    user?.credits ?? '0',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-              SizedBox(height: spacing),
-              InkWell(
-                onTap: () {
-                  Get.to(() => const BuyCreditsScreen());
-                },
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.credit_card),
-                    const SizedBox(width: 10),
-                    Text(
-                      'home_buy_credits'.tr,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.arrow_forward_ios),
-                  ],
-                ),
-              ),
-              SizedBox(height: spacing),
               Boutton(
                 text: 'home_start_chat'.tr,
                 onPressed: () {
@@ -221,15 +178,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           Text(
                             'home_recent_conversations'.tr,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleLarge?.copyWith(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Expanded(
                             child: TextButton(
                               onPressed: () {
-                                Get.to(() => const ConversationsHistoryScreen());
+                                Get.to(
+                                  () => const ConversationsHistoryScreen(),
+                                );
                               },
                               child: Text('home_see_all'.tr),
                             ),
@@ -243,13 +204,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: ListTile(
                             leading: const CircleAvatar(
                               backgroundColor: AppColors.primary,
-                              child: Icon(
-                                Icons.chat,
-                                color: Colors.white,
-                              ),
+                              child: Icon(Icons.chat, color: Colors.white),
                             ),
                             title: Text(
-                              conversation.libelle ?? 'home_new_conversation'.tr,
+                              conversation.libelle ??
+                                  'home_new_conversation'.tr,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -263,9 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () {
                               Get.to(
-                                () => AIChatScreen(
-                                  conversation: conversation,
-                                ),
+                                () => AIChatScreen(conversation: conversation),
                               );
                             },
                           ),

@@ -1,4 +1,3 @@
-import 'package:botroad/ui/screens/auth/auth.dart';
 import 'package:botroad/ui/screens/home/home.dart';
 import 'package:botroad/ui/screens/splash/introduction/screens.dart';
 import 'package:botroad/utils/Setting.dart';

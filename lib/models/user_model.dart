@@ -7,7 +7,6 @@ class UserModel {
   String? email;
   String? password;
   String? google_id;
-  String? credits;
   String? nom;
   String? date_create;
   String? date_active;
@@ -21,7 +20,6 @@ class UserModel {
     this.email,
     this.password,
     this.google_id,
-    this.credits,
     this.nom,
     this.date_create,
     this.date_active,
@@ -38,7 +36,6 @@ class UserModel {
         map[BDColumnNames.User_password] ?? "",
       ),
       google_id = map[BDColumnNames.User_google_id],
-      credits = Setting.encrypt.decrypt(map[BDColumnNames.User_credits] ?? ""),
       nom = map[BDColumnNames.User_nom],
       date_create =
           map[BDColumnNames.User_date_create] != null
@@ -82,7 +79,6 @@ class UserModel {
       BDColumnNames.User_email: email,
       BDColumnNames.User_password: Setting.encrypt.encrypt(password ?? ""),
       BDColumnNames.User_google_id: google_id,
-      BDColumnNames.User_credits: Setting.encrypt.encrypt(credits ?? ""),
       BDColumnNames.User_nom: nom,
       BDColumnNames.User_date_create:
           date_create ?? FieldValue.serverTimestamp(),
@@ -101,7 +97,6 @@ class UserModel {
     String? email,
     String? password,
     String? google_id,
-    String? credits,
     String? nom,
     String? date_create,
     String? date_active,
@@ -115,7 +110,6 @@ class UserModel {
       email: email ?? this.email,
       password: password ?? this.password,
       google_id: google_id ?? this.google_id,
-      credits: credits ?? this.credits,
       nom: nom ?? this.nom,
       date_create: date_create ?? this.date_create,
       date_active: date_active ?? this.date_active,

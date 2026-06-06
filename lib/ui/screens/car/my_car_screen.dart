@@ -57,7 +57,9 @@ class _MyCarScreenState extends State<MyCarScreen> {
     }
 
     final tripService = TripHistoryService(collection: Setting.fTripHistory);
-    final roadReportService = RoadReportService(collection: Setting.fRoadReports);
+    final roadReportService = RoadReportService(
+      collection: Setting.fRoadReports,
+    );
 
     final trips = await tripService.getTripHistoryForUser(userId, limit: 5);
     final reports = await roadReportService.getRoadReportsForUser(
@@ -65,20 +67,13 @@ class _MyCarScreenState extends State<MyCarScreen> {
       limit: 5,
     );
 
-    return _CarDashboardData(
-      trips: trips,
-      reports: reports,
-    );
+    return _CarDashboardData(trips: trips, reports: reports);
   }
 
   Future<void> _savePreferences() async {
     final name = _carNameController.text.trim();
     if (name.isEmpty) {
-      Setting.showMessage(
-        'login_error'.tr,
-        'car_name_required'.tr,
-        Colors.red,
-      );
+      Setting.showMessage('login_error'.tr, 'car_name_required'.tr, Colors.red);
       return;
     }
 
@@ -96,12 +91,14 @@ class _MyCarScreenState extends State<MyCarScreen> {
   }
 
   String _formatTripTitle(TripHistory trip) {
-    final start = trip.originLabel?.trim().isNotEmpty == true
-        ? trip.originLabel!
-        : 'car_start'.tr;
-    final destination = trip.destinationLabel?.trim().isNotEmpty == true
-        ? trip.destinationLabel!
-        : 'car_destination'.tr;
+    final start =
+        trip.originLabel?.trim().isNotEmpty == true
+            ? trip.originLabel!
+            : 'car_start'.tr;
+    final destination =
+        trip.destinationLabel?.trim().isNotEmpty == true
+            ? trip.destinationLabel!
+            : 'car_destination'.tr;
     return '$start -> $destination';
   }
 
@@ -257,14 +254,15 @@ class _MyCarScreenState extends State<MyCarScreen> {
                       const SizedBox(height: 14),
                       DropdownButtonFormField<String>(
                         value: _selectedMode,
-                        items: _drivingModes
-                            .map(
-                              (mode) => DropdownMenuItem<String>(
-                                value: mode,
-                                child: Text(mode.tr),
-                              ),
-                            )
-                            .toList(),
+                        items:
+                            _drivingModes
+                                .map(
+                                  (mode) => DropdownMenuItem<String>(
+                                    value: mode,
+                                    child: Text(mode.tr),
+                                  ),
+                                )
+                                .toList(),
                         decoration: InputDecoration(
                           labelText: 'car_driving_mode'.tr,
                           prefixIcon: Icon(Icons.tune),
@@ -322,10 +320,6 @@ class _MyCarScreenState extends State<MyCarScreen> {
                         value: user.email ?? 'car_not_provided'.tr,
                       ),
                       _CarInfoRow(
-                        label: 'car_credits'.tr,
-                        value: user.credits ?? '0',
-                      ),
-                      _CarInfoRow(
                         label: 'car_last_login'.tr,
                         value: user.date_connexion ?? 'car_not_available'.tr,
                       ),
@@ -338,58 +332,60 @@ class _MyCarScreenState extends State<MyCarScreen> {
                 title: 'car_recent_trips'.tr,
                 isLoading: isLoading,
                 emptyMessage: 'car_no_recent_trip'.tr,
-                children: data.trips
-                    .map(
-                      (trip) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFFE7F6FB),
-                          child: Icon(
-                            Icons.route,
-                            color: AppColors.primary,
+                children:
+                    data.trips
+                        .map(
+                          (trip) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0xFFE7F6FB),
+                              child: Icon(
+                                Icons.route,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            title: Text(_formatTripTitle(trip)),
+                            subtitle: Text(_formatTripMeta(trip)),
+                            trailing: Text(
+                              _formatDate(trip.createdAt),
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
-                        ),
-                        title: Text(_formatTripTitle(trip)),
-                        subtitle: Text(_formatTripMeta(trip)),
-                        trailing: Text(
-                          _formatDate(trip.createdAt),
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    )
-                    .toList(),
+                        )
+                        .toList(),
               ),
               const SizedBox(height: 16),
               _SectionCard(
                 title: 'car_reports'.tr,
                 isLoading: isLoading,
                 emptyMessage: 'car_no_recent_report'.tr,
-                children: data.reports
-                    .map(
-                      (report) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundColor: const Color(0xFFFFF3E6),
-                          child: const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Color(0xFFC97A00),
+                children:
+                    data.reports
+                        .map(
+                          (report) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: const Color(0xFFFFF3E6),
+                              child: const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFC97A00),
+                              ),
+                            ),
+                            title: Text(_formatReportMeta(report)),
+                            subtitle: Text(
+                              report.comment?.trim().isNotEmpty == true
+                                  ? report.comment!
+                                  : 'car_no_comment'.tr,
+                            ),
+                            trailing: Text(
+                              _formatDate(report.createdAt),
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(fontSize: 12),
+                            ),
                           ),
-                        ),
-                        title: Text(_formatReportMeta(report)),
-                        subtitle: Text(
-                          report.comment?.trim().isNotEmpty == true
-                              ? report.comment!
-                              : 'car_no_comment'.tr,
-                        ),
-                        trailing: Text(
-                          _formatDate(report.createdAt),
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    )
-                    .toList(),
+                        )
+                        .toList(),
               ),
             ],
           );
@@ -403,20 +399,14 @@ class _CarDashboardData {
   final List<TripHistory> trips;
   final List<RoadReport> reports;
 
-  const _CarDashboardData({
-    this.trips = const [],
-    this.reports = const [],
-  });
+  const _CarDashboardData({this.trips = const [], this.reports = const []});
 }
 
 class _StatChip extends StatelessWidget {
   final String label;
   final String value;
 
-  const _StatChip({
-    required this.label,
-    required this.value,
-  });
+  const _StatChip({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -441,10 +431,7 @@ class _StatChip extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.white70,
-            ),
+            style: const TextStyle(fontSize: 12, color: Colors.white70),
           ),
         ],
       ),
@@ -469,9 +456,7 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -479,19 +464,13 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             if (isLoading)
               const Center(child: CircularProgressIndicator())
             else if (children.isEmpty)
-              Text(
-                emptyMessage,
-                style: const TextStyle(color: Colors.black54),
-              )
+              Text(emptyMessage, style: const TextStyle(color: Colors.black54))
             else
               ...children,
           ],
@@ -505,10 +484,7 @@ class _CarInfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _CarInfoRow({
-    required this.label,
-    required this.value,
-  });
+  const _CarInfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -530,9 +506,7 @@ class _CarInfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],

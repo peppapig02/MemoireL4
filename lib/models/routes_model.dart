@@ -8,6 +8,9 @@ class RoutesModel {
   String? destination_id; //location id
   List<Map<String, dynamic>>? waypoints;
   List<Map<String, dynamic>>? warnings;
+  List<Map<String, dynamic>>? segments;
+  String? mode;
+  double? risk_score;
   String? date_create;
   String? points;
   String? nom;
@@ -19,6 +22,9 @@ class RoutesModel {
     this.destination_id,
     this.waypoints,
     this.warnings,
+    this.segments,
+    this.mode,
+    this.risk_score,
     this.date_create,
     this.points,
     this.nom,
@@ -41,6 +47,17 @@ class RoutesModel {
                   .map((warning) => warning.cast<String, dynamic>())
                   .toList()
               : null,
+      segments =
+          map[BDColumnNames.Routes_segments] != null
+              ? map[BDColumnNames.Routes_segments]
+                  .map((segment) => segment.cast<String, dynamic>())
+                  .toList()
+              : null,
+      mode = map[BDColumnNames.Routes_mode],
+      risk_score =
+          map[BDColumnNames.Routes_risk_score] != null
+              ? (map[BDColumnNames.Routes_risk_score] as num).toDouble()
+              : null,
       date_create =
           map[BDColumnNames.Routes_date_create] != null
               ? map[BDColumnNames.Routes_date_create] is String
@@ -61,6 +78,9 @@ class RoutesModel {
       BDColumnNames.Routes_destination_id: destination_id,
       BDColumnNames.Routes_waypoints: waypoints,
       BDColumnNames.Routes_warnings: warnings,
+      BDColumnNames.Routes_segments: segments,
+      BDColumnNames.Routes_mode: mode,
+      BDColumnNames.Routes_risk_score: risk_score,
       BDColumnNames.Routes_date_create:
           date_create ?? FieldValue.serverTimestamp(),
       BDColumnNames.Routes_points: points,

@@ -2,19 +2,18 @@ import 'package:botroad/ui/screens/auth/auth.dart';
 import 'package:botroad/utils/const/images.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/utils.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 
 class IntroductionScreens extends StatelessWidget {
   IntroductionScreens({super.key});
 
-  var listPagesViewModel = [
+  final listPagesViewModel = [
     PageViewModel(
       title: "L'assistant intelligent",
       body:
-          "Parlez naturellement, Botroad vous guide. Grâce à notre assistant IA, demandez un itinéraire, posez une question ou explorez un lieu — comme si vous parliez à un ami.",
+          "Parlez naturellement, BotRoad vous guide. Grace a notre assistant IA, demandez un itineraire, posez une question ou explorez un lieu comme si vous parliez a un ami.",
       image: Container(
-        padding: EdgeInsets.only(top: 50),
+        padding: const EdgeInsets.only(top: 50),
         height: 500,
         width: double.infinity,
         child: Image.asset(Assets.intro_sreen_1),
@@ -23,9 +22,9 @@ class IntroductionScreens extends StatelessWidget {
     PageViewModel(
       title: "Navigation intelligente",
       body:
-          "Un itinéraire clair, précis, interactif. Botroad combine GPS, Google Maps et IA pour tracer des trajets fiables, ajouter des étapes et explorer facilement.",
+          "Un itineraire clair, precis et interactif. BotRoad combine GPS, Google Maps et IA pour tracer des trajets fiables, ajouter des etapes et explorer facilement.",
       image: Container(
-        padding: EdgeInsets.only(top: 50),
+        padding: const EdgeInsets.only(top: 50),
         height: 500,
         width: double.infinity,
         child: Image.asset(Assets.intro_sreen_2),
@@ -34,15 +33,16 @@ class IntroductionScreens extends StatelessWidget {
     PageViewModel(
       title: "Services complets",
       body:
-          "Créez, explorez, profitez sans limite. Connectez-vous, achetez des crédits via Mobile Money ou Visa, consultez votre historique et découvrez des lieux tendances.",
+          "Creez, explorez et profitez sans limite. Connectez-vous, consultez votre historique et decouvrez des lieux tendances.",
       image: Container(
-        padding: EdgeInsets.only(top: 50),
+        padding: const EdgeInsets.only(top: 50),
         height: 500,
         width: double.infinity,
         child: Image.asset(Assets.intro_sreen_3),
       ),
     ),
   ];
+
   @override
   Widget build(BuildContext context) {
     return IntroductionScreen(
@@ -54,7 +54,7 @@ class IntroductionScreens extends StatelessWidget {
         onPressed: () {
           Get.offAll(() => const AuthScreen());
         },
-        child: Text("Continuer", style: TextStyle(fontSize: 10)),
+        child: const Text("Continuer", style: TextStyle(fontSize: 10)),
       ),
       onDone: () {
         Get.offAll(() => const AuthScreen());

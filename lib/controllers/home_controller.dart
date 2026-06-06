@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 // import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 // import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 
-import '../core/config/app_secrets.dart';
 import '../utils/Setting.dart';
 
 class HomeController extends GetxController {
@@ -20,7 +17,6 @@ class HomeController extends GetxController {
   late StreamSubscription appBlock;
 
   late StreamSubscription appAjour;
-  String openaikey = AppSecrets.openAiApiKey;
 
   var isAjour = true.obs;
   var isBlock = false.obs;

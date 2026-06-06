@@ -1,8 +1,6 @@
-import 'package:botroad/controllers/user_controller.dart';
 import 'package:botroad/ui/screens/auth/pages/login.dart';
 import 'package:botroad/ui/screens/auth/pages/register.dart';
 import 'package:botroad/ui/screens/home/home.dart';
-import 'package:botroad/ui/screens/splash/introduction/presentation.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/const/images.dart';
@@ -184,7 +182,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                 isLoading = false;
                               });
                               if (success) {
-                                Get.offAll(() => const Presentation());
+                                Get.offAll(() => const HomeScreen());
                               } else {
                                 Setting.showMessage(
                                   'login_error'.tr,
@@ -204,9 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                       SizedBox(height: height / 50),
                       Text(
-                        'auth_version'.trParams({
-                          'version': Setting.version,
-                        }),
+                        'auth_version'.trParams({'version': Setting.version}),
                       ),
                     ],
                   ),

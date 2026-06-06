@@ -17,6 +17,10 @@ class RoadReport {
   final String status;
   final String? aiPrediction;
   final DateTime? createdAt;
+  final DateTime? expiresAt;
+  final double radiusMeters;
+  final List<String> confirmedBy;
+  final List<String> refutedBy;
 
   const RoadReport({
     this.id,
@@ -35,6 +39,10 @@ class RoadReport {
     required this.status,
     this.aiPrediction,
     this.createdAt,
+    this.expiresAt,
+    this.radiusMeters = 200,
+    this.confirmedBy = const [],
+    this.refutedBy = const [],
   });
 
   factory RoadReport.fromJson(Map<String, dynamic> json) {
@@ -58,6 +66,10 @@ class RoadReport {
       status: (json['status'] ?? 'pending') as String,
       aiPrediction: json['aiPrediction'] as String?,
       createdAt: _parseDateTime(json['createdAt']),
+      expiresAt: _parseDateTime(json['expiresAt']),
+      radiusMeters: _toDouble(json['radiusMeters']) ?? 200,
+      confirmedBy: _toStringList(json['confirmedBy']),
+      refutedBy: _toStringList(json['refutedBy']),
     );
   }
 
@@ -79,7 +91,15 @@ class RoadReport {
       'status': status,
       'aiPrediction': aiPrediction,
       'createdAt':
-          createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+          createdAt != null
+              ? Timestamp.fromDate(createdAt!)
+              : FieldValue.serverTimestamp(),
+      'expiresAt': expiresAt != null ? Timestamp.fromDate(expiresAt!) : null,
+      'radiusMeters': radiusMeters,
+      'confirmedBy': confirmedBy,
+      'refutedBy': refutedBy,
+      'confirmationCount': confirmedBy.length,
+      'refutationCount': refutedBy.length,
     };
   }
 
@@ -100,6 +120,10 @@ class RoadReport {
     String? status,
     String? aiPrediction,
     DateTime? createdAt,
+    DateTime? expiresAt,
+    double? radiusMeters,
+    List<String>? confirmedBy,
+    List<String>? refutedBy,
   }) {
     return RoadReport(
       id: id ?? this.id,
@@ -118,8 +142,26 @@ class RoadReport {
       status: status ?? this.status,
       aiPrediction: aiPrediction ?? this.aiPrediction,
       createdAt: createdAt ?? this.createdAt,
+      expiresAt: expiresAt ?? this.expiresAt,
+      radiusMeters: radiusMeters ?? this.radiusMeters,
+      confirmedBy: confirmedBy ?? this.confirmedBy,
+      refutedBy: refutedBy ?? this.refutedBy,
     );
   }
+
+  bool get isActive {
+    if (status == 'expired' || status == 'deleted') {
+      return false;
+    }
+    if (expiresAt == null) {
+      return true;
+    }
+    return expiresAt!.isAfter(DateTime.now());
+  }
+
+  int get confirmationCount => confirmedBy.length;
+
+  int get refutationCount => refutedBy.length;
 }
 
 double? _toDouble(dynamic value) {

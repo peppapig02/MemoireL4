@@ -6,9 +6,7 @@ import '../models/trip_history.dart';
 class TripHistoryService {
   final CollectionReference<Map<String, dynamic>> collection;
 
-  TripHistoryService({
-    required this.collection,
-  });
+  TripHistoryService({required this.collection});
 
   TripHistory buildTripHistory({
     required String originalMessage,
@@ -45,14 +43,15 @@ class TripHistoryService {
     int limit = 5,
   }) async {
     try {
-      final snapshot = await collection
-          .where('userId', isEqualTo: userId)
-          .orderBy('createdAt', descending: true)
-          .limit(limit)
-          .get();
+      final snapshot =
+          await collection
+              .where('userId', isEqualTo: userId)
+              .orderBy('createdAt', descending: true)
+              .limit(limit)
+              .get();
 
       return snapshot.docs
-          .map((doc) => TripHistory.fromJson(doc.data()))
+          .map((doc) => TripHistory.fromJson(doc.data()).copyWith(id: doc.id))
           .toList();
     } catch (_) {
       return const [];

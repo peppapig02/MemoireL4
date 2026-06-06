@@ -16,6 +16,8 @@ class RouteResult {
   final List<Map<String, dynamic>> geometry;
   final List<RouteSegment> segments;
   final List<Map<String, dynamic>> warnings;
+  final String mode;
+  final double riskScore;
   final DateTime? createdAt;
 
   const RouteResult({
@@ -32,6 +34,8 @@ class RouteResult {
     this.geometry = const [],
     this.segments = const [],
     this.warnings = const [],
+    this.mode = 'fast',
+    this.riskScore = 0,
     this.createdAt,
   });
 
@@ -50,6 +54,8 @@ class RouteResult {
       geometry: _toMapList(json['geometry']),
       segments: _toRouteSegments(json['segments']),
       warnings: _toMapList(json['warnings']),
+      mode: (json['mode'] ?? 'fast') as String,
+      riskScore: _toDouble(json['riskScore']) ?? 0,
       createdAt: _parseDateTime(json['createdAt']),
     );
   }
@@ -69,8 +75,12 @@ class RouteResult {
       'geometry': geometry,
       'segments': segments.map((segment) => segment.toJson()).toList(),
       'warnings': warnings,
+      'mode': mode,
+      'riskScore': riskScore,
       'createdAt':
-          createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+          createdAt != null
+              ? Timestamp.fromDate(createdAt!)
+              : FieldValue.serverTimestamp(),
     };
   }
 
@@ -88,6 +98,8 @@ class RouteResult {
     List<Map<String, dynamic>>? geometry,
     List<RouteSegment>? segments,
     List<Map<String, dynamic>>? warnings,
+    String? mode,
+    double? riskScore,
     DateTime? createdAt,
   }) {
     return RouteResult(
@@ -104,6 +116,8 @@ class RouteResult {
       geometry: geometry ?? this.geometry,
       segments: segments ?? this.segments,
       warnings: warnings ?? this.warnings,
+      mode: mode ?? this.mode,
+      riskScore: riskScore ?? this.riskScore,
       createdAt: createdAt ?? this.createdAt,
     );
   }

@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:botroad/core/config/app_secrets.dart';
+import 'package:botroad/core/models/route_result.dart';
+import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/network_status_service.dart';
+import 'package:botroad/core/services/route_risk_service.dart';
+import 'package:botroad/core/services/routing_service.dart';
 import 'package:botroad/models/routes_model.dart';
 import 'package:botroad/ui/widgets/network_status_banner.dart';
 import 'package:botroad/utils/Setting.dart';
@@ -29,8 +34,15 @@ class _IteneraireState extends State<Iteneraire> {
   bool isNavigating = false;
   String? routeErrorMessage;
   late final NetworkStatusService networkStatusService;
+  late final RoadReportService roadReportService;
+  late final RouteRiskService routeRiskService;
+  late final RoutingService routingService;
   Position? currentPosition;
   Timer? navigationTimer;
+  bool isReporting = false;
+  bool isLoadingAlternative = false;
+  bool isLoadingRouteMode = false;
+  bool isMapInitializing = true;
 
   @override
   void initState() {
@@ -39,6 +51,9 @@ class _IteneraireState extends State<Iteneraire> {
         Get.isRegistered<NetworkStatusService>()
             ? Get.find<NetworkStatusService>()
             : Get.put(NetworkStatusService(), permanent: true);
+    roadReportService = RoadReportService(collection: Setting.fRoadReports);
+    routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
+    routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
     _initializeMap();
   }
 
@@ -48,23 +63,69 @@ class _IteneraireState extends State<Iteneraire> {
     super.dispose();
   }
 
-  void _initializeMap() {
+  Future<void> _initializeMap() async {
     if (widget.route?.points == null || widget.route!.points!.trim().isEmpty) {
-      routeErrorMessage = 'itinerary_route_unavailable'.tr;
-      networkStatusService.markOffline();
+      _finishMapInitializationWithError('itinerary_route_unavailable'.tr);
       return;
     }
 
     try {
-      final points = widget.route!.points!.split('|').map((point) {
-        final coords = point.split(',');
-        return LatLng(double.parse(coords[0]), double.parse(coords[1]));
-      }).toList();
+      var points = _parseRoutePoints(widget.route!.points);
 
       if (points.length < 2) {
-        routeErrorMessage = 'itinerary_route_unavailable'.tr;
-        networkStatusService.markOffline();
+        _finishMapInitializationWithError('itinerary_route_unavailable'.tr);
         return;
+      }
+
+      markers.clear();
+      polylines.clear();
+
+      if (points.length <= 2) {
+        final detailedRoute = await routingService.calculateRoute(
+          userId: Setting.userCtrl.user.value.key,
+          startLat: points.first.latitude,
+          startLng: points.first.longitude,
+          destinationLat: points.last.latitude,
+          destinationLng: points.last.longitude,
+        );
+
+        final detailedPoints =
+            detailedRoute?.geometry
+                .map(
+                  (point) => LatLng(
+                    _toDouble(point['latitude']) ?? 0,
+                    _toDouble(point['longitude']) ?? 0,
+                  ),
+                )
+                .where((point) => point.latitude != 0 || point.longitude != 0)
+                .toList() ??
+            const <LatLng>[];
+
+        if (detailedRoute != null && detailedPoints.length > points.length) {
+          points = detailedPoints;
+          widget.route!
+            ..points = points
+                .map((point) => '${point.latitude},${point.longitude}')
+                .join('|')
+            ..segments =
+                detailedRoute.segments
+                    .map((segment) => segment.toJson())
+                    .toList()
+            ..warnings = detailedRoute.warnings
+            ..risk_score = detailedRoute.riskScore;
+
+          if (widget.route!.key != null) {
+            await Setting.routesCtrl.updateRoutes(
+              key: widget.route!.key!,
+              map: {
+                'points': widget.route!.points,
+                'segments': widget.route!.segments,
+                'warnings': widget.route!.warnings,
+                'risk_score': widget.route!.risk_score,
+              },
+            );
+          }
+        }
       }
 
       markers.add(
@@ -109,6 +170,32 @@ class _IteneraireState extends State<Iteneraire> {
         }
       }
 
+      if (widget.route?.warnings != null) {
+        for (var i = 0; i < widget.route!.warnings!.length; i++) {
+          final warning = widget.route!.warnings![i];
+          final lat = _toDouble(warning['latitude']);
+          final lng = _toDouble(warning['longitude']);
+          if (lat == null || lng == null) {
+            continue;
+          }
+
+          markers.add(
+            Marker(
+              markerId: MarkerId('warning_$i'),
+              position: LatLng(lat, lng),
+              icon: BitmapDescriptor.defaultMarkerWithHue(
+                BitmapDescriptor.hueOrange,
+              ),
+              infoWindow: InfoWindow(
+                title: 'Alerte route',
+                snippet:
+                    '${warning['type'] ?? 'anomalie'} - ${warning['severity'] ?? 'moyen'}',
+              ),
+            ),
+          );
+        }
+      }
+
       polylines.add(
         Polyline(
           polylineId: const PolylineId('route'),
@@ -117,6 +204,41 @@ class _IteneraireState extends State<Iteneraire> {
           width: 5,
         ),
       );
+
+      if (widget.route?.segments != null) {
+        for (var i = 0; i < widget.route!.segments!.length; i++) {
+          final segment = widget.route!.segments![i];
+          final riskLevel = segment['riskLevel']?.toString();
+          if (riskLevel == null ||
+              riskLevel == 'unknown' ||
+              riskLevel == 'low') {
+            continue;
+          }
+
+          final startLat = _toDouble(segment['startLat']);
+          final startLng = _toDouble(segment['startLng']);
+          final endLat = _toDouble(segment['endLat']);
+          final endLng = _toDouble(segment['endLng']);
+          if (startLat == null ||
+              startLng == null ||
+              endLat == null ||
+              endLng == null) {
+            continue;
+          }
+
+          polylines.add(
+            Polyline(
+              polylineId: PolylineId('risk_segment_$i'),
+              points: [LatLng(startLat, startLng), LatLng(endLat, endLng)],
+              color:
+                  riskLevel == 'high'
+                      ? const Color(0xFFE53935)
+                      : const Color(0xFFFF9800),
+              width: 8,
+            ),
+          );
+        }
+      }
 
       bounds = LatLngBounds(
         southwest: LatLng(
@@ -133,6 +255,43 @@ class _IteneraireState extends State<Iteneraire> {
       routeErrorMessage = 'itinerary_route_unavailable'.tr;
       networkStatusService.markOffline();
       printDebug('Erreur lors de l initialisation de la carte: $e');
+    } finally {
+      isMapInitializing = false;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  List<LatLng> _parseRoutePoints(String? routePoints) {
+    if (routePoints == null || routePoints.trim().isEmpty) {
+      return const [];
+    }
+
+    final points = <LatLng>[];
+    for (final point in routePoints.split('|')) {
+      final coords = point.split(',');
+      if (coords.length < 2) {
+        continue;
+      }
+
+      final latitude = double.tryParse(coords[0].trim());
+      final longitude = double.tryParse(coords[1].trim());
+      if (latitude == null || longitude == null) {
+        continue;
+      }
+
+      points.add(LatLng(latitude, longitude));
+    }
+    return points;
+  }
+
+  void _finishMapInitializationWithError(String message) {
+    routeErrorMessage = message;
+    networkStatusService.markOffline();
+    isMapInitializing = false;
+    if (mounted) {
+      setState(() {});
     }
   }
 
@@ -175,7 +334,9 @@ class _IteneraireState extends State<Iteneraire> {
     navigationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
         final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+          ),
         );
 
         setState(() {
@@ -242,6 +403,549 @@ class _IteneraireState extends State<Iteneraire> {
     });
   }
 
+  double? _toDouble(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    return double.tryParse(value.toString());
+  }
+
+  double _toRadians(double degree) {
+    return degree * (math.pi / 180);
+  }
+
+  Future<Position?> _getAllowedCurrentPosition() async {
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      Setting.showMessage(
+        'login_error'.tr,
+        'itinerary_location_permission_error'.tr,
+      );
+      return null;
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+  }
+
+  String? _nearestSegmentId(double latitude, double longitude) {
+    final segments = widget.route?.segments ?? const [];
+    if (segments.isEmpty) {
+      return null;
+    }
+
+    String? nearestId;
+    var nearestDistance = double.infinity;
+    for (final segment in segments) {
+      final startLat = _toDouble(segment['startLat']);
+      final startLng = _toDouble(segment['startLng']);
+      final endLat = _toDouble(segment['endLat']);
+      final endLng = _toDouble(segment['endLng']);
+      if (startLat == null ||
+          startLng == null ||
+          endLat == null ||
+          endLng == null) {
+        continue;
+      }
+
+      final distance = _distancePointToSegmentKm(
+        latitude,
+        longitude,
+        startLat,
+        startLng,
+        endLat,
+        endLng,
+      );
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestId = segment['id']?.toString();
+      }
+    }
+
+    return nearestId;
+  }
+
+  Future<void> _showReportSheet() async {
+    const types = <String, String>{
+      'mauvaise_route': 'Route deconseillee',
+      'trou': 'Trou / route abimee',
+      'accident': 'Accident',
+      'embouteillage': 'Embouteillage',
+      'inondation': 'Inondation',
+      'danger': 'Danger',
+    };
+    const severities = <String, String>{
+      'faible': 'Faible',
+      'moyen': 'Moyen',
+      'eleve': 'Eleve',
+    };
+
+    var selectedType = 'mauvaise_route';
+    var selectedSeverity = 'moyen';
+    var isSubmittingReport = false;
+    final commentController = TextEditingController();
+
+    await Get.bottomSheet(
+      StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Container(
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+            ),
+            child: SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Signaler une anomalie',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedType,
+                    decoration: const InputDecoration(
+                      labelText: 'Type de probleme',
+                      border: OutlineInputBorder(),
+                    ),
+                    items:
+                        types.entries
+                            .map(
+                              (entry) => DropdownMenuItem(
+                                value: entry.key,
+                                child: Text(entry.value),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setSheetState(() => selectedType = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedSeverity,
+                    decoration: const InputDecoration(
+                      labelText: 'Gravite',
+                      border: OutlineInputBorder(),
+                    ),
+                    items:
+                        severities.entries
+                            .map(
+                              (entry) => DropdownMenuItem(
+                                value: entry.key,
+                                child: Text(entry.value),
+                              ),
+                            )
+                            .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setSheetState(() => selectedSeverity = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: commentController,
+                    minLines: 2,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Commentaire optionnel',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.report_problem_outlined),
+                      label: Text(
+                        isSubmittingReport
+                            ? 'Envoi...'
+                            : 'Envoyer le signalement',
+                      ),
+                      onPressed:
+                          isReporting || isSubmittingReport
+                              ? null
+                              : () async {
+                                final type = selectedType;
+                                final severity = selectedSeverity;
+                                final comment = commentController.text.trim();
+                                setSheetState(() {
+                                  isSubmittingReport = true;
+                                });
+                                Navigator.of(context).pop();
+                                await _submitRoadReport(
+                                  type: type,
+                                  severity: severity,
+                                  comment: comment,
+                                );
+                              },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    commentController.dispose();
+  }
+
+  Future<void> _submitRoadReport({
+    required String type,
+    required String severity,
+    String? comment,
+  }) async {
+    if (isReporting) {
+      return;
+    }
+
+    setState(() {
+      isReporting = true;
+    });
+
+    try {
+      final position = await _getAllowedCurrentPosition();
+      if (position == null) {
+        return;
+      }
+
+      final report = roadReportService.buildUserReport(
+        userId: Setting.userCtrl.user.value.key,
+        latitude: position.latitude,
+        longitude: position.longitude,
+        segmentId: _nearestSegmentId(position.latitude, position.longitude),
+        routeId: widget.route?.key,
+        type: type,
+        severity: severity,
+        comment: comment?.trim().isNotEmpty == true ? comment : null,
+      );
+
+      final reportId = await roadReportService.saveRoadReport(report);
+      if (reportId == null) {
+        Setting.showMessage(
+          'login_error'.tr,
+          'Le signalement n a pas pu etre enregistre.',
+          Colors.red,
+        );
+        return;
+      }
+
+      setState(() {
+        markers.add(
+          Marker(
+            markerId: MarkerId('my_report_$reportId'),
+            position: LatLng(position.latitude, position.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueOrange,
+            ),
+            infoWindow: InfoWindow(title: 'Signalement envoye', snippet: type),
+          ),
+        );
+      });
+
+      Setting.showMessage(
+        'login_verification'.tr,
+        'Signalement enregistre pour 48h. Retrouvez-le dans Alertes route.',
+        Colors.green,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isReporting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showSaferAlternative() async {
+    await _showRouteForMode('alternative');
+  }
+
+  void _showRouteModeSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.all(18),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Choisir le mode d itineraire',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              _RouteModeOption(
+                icon: Icons.flash_on_outlined,
+                title: 'Rapide',
+                description: 'Priorite a la duree du trajet.',
+                onTap: () {
+                  Get.back();
+                  _showRouteForMode('fast');
+                },
+              ),
+              _RouteModeOption(
+                icon: Icons.verified_user_outlined,
+                title: 'Sur',
+                description: 'Evite au maximum les alertes et zones a risque.',
+                onTap: () {
+                  Get.back();
+                  _showRouteForMode('safe');
+                },
+              ),
+              _RouteModeOption(
+                icon: Icons.balance_outlined,
+                title: 'Equilibre',
+                description: 'Compromis entre securite, distance et duree.',
+                onTap: () {
+                  Get.back();
+                  _showRouteForMode('balanced');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRouteForMode(String mode) async {
+    if (isLoadingAlternative || widget.route?.points == null) {
+      return;
+    }
+
+    final routePoints = widget.route!.points!.split('|');
+    if (routePoints.length < 2) {
+      return;
+    }
+
+    setState(() {
+      isLoadingAlternative = true;
+      isLoadingRouteMode = true;
+    });
+
+    try {
+      final start = routePoints.first.split(',');
+      final end = routePoints.last.split(',');
+      final alternatives = await routingService.calculateRoutes(
+        userId: Setting.userCtrl.user.value.key,
+        startLat: double.parse(start[0]),
+        startLng: double.parse(start[1]),
+        destinationLat: double.parse(end[0]),
+        destinationLng: double.parse(end[1]),
+        startLabel: 'position actuelle',
+        destinationLabel: 'destination',
+        alternatives: true,
+      );
+
+      if (alternatives.isEmpty) {
+        Setting.showMessage(
+          'login_info'.tr,
+          'Aucun itineraire alternatif disponible pour le moment.',
+        );
+        return;
+      }
+
+      final checked = await routeRiskService.attachWarningsToRoutes(
+        alternatives,
+      );
+      if (mode == 'alternative' && !_hasDifferentRoute(checked)) {
+        Setting.showMessage(
+          'login_info'.tr,
+          'Aucun itineraire alternatif different disponible pour le moment.',
+        );
+        return;
+      }
+
+      final best =
+          mode == 'alternative'
+              ? _chooseDifferentRoute(checked)
+              : routeRiskService.chooseBestRoute(checked, mode);
+      final route = _routeResultToModel(best, mode);
+      Setting.routesCtrl.routes.value = route;
+      final key = await Setting.routesCtrl.addRoutes();
+      if (key != null) {
+        route.key = key;
+      }
+
+      Setting.showMessage(
+        'login_verification'.tr,
+        'Itineraire ${_routeModeLabel(mode).toLowerCase()} selectionne.',
+        Colors.green,
+      );
+      await _applyRoute(route);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingAlternative = false;
+          isLoadingRouteMode = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _applyRoute(RoutesModel route) async {
+    widget.route!
+      ..key = route.key
+      ..nom = route.nom
+      ..points = route.points
+      ..waypoints = route.waypoints
+      ..warnings = route.warnings
+      ..segments = route.segments
+      ..mode = route.mode
+      ..risk_score = route.risk_score
+      ..date_create = route.date_create;
+
+    setState(() {
+      markers.clear();
+      polylines.clear();
+      bounds = null;
+      routeErrorMessage = null;
+      isMapInitializing = true;
+    });
+
+    await _initializeMap();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recenterMap());
+  }
+
+  String _routeModeLabel(String mode) {
+    return switch (mode) {
+      'safe' => 'Sur',
+      'balanced' => 'Equilibre',
+      'alternative' => 'Alternative',
+      _ => 'Rapide',
+    };
+  }
+
+  RouteResult _chooseDifferentRoute(List<RouteResult> routes) {
+    if (routes.isEmpty) {
+      throw ArgumentError('routes must not be empty');
+    }
+
+    final currentSignature = _routeSignatureFromPoints(widget.route?.points);
+    final ranked =
+        routes.toList()..sort((a, b) => a.duration.compareTo(b.duration));
+
+    for (final route in ranked) {
+      final signature = _routeSignatureFromGeometry(route.geometry);
+      if (signature != currentSignature) {
+        return route.copyWith(mode: 'alternative');
+      }
+    }
+
+    return ranked.first.copyWith(mode: 'alternative');
+  }
+
+  bool _hasDifferentRoute(List<RouteResult> routes) {
+    final currentSignature = _routeSignatureFromPoints(widget.route?.points);
+    return routes.any(
+      (route) =>
+          _routeSignatureFromGeometry(route.geometry) != currentSignature,
+    );
+  }
+
+  String _routeSignatureFromPoints(String? points) {
+    final parsed = _parseRoutePoints(points);
+    if (parsed.isEmpty) {
+      return '';
+    }
+
+    final step = math.max(1, parsed.length ~/ 8);
+    return [
+      for (var i = 0; i < parsed.length; i += step)
+        '${parsed[i].latitude.toStringAsFixed(4)},${parsed[i].longitude.toStringAsFixed(4)}',
+    ].join('|');
+  }
+
+  String _routeSignatureFromGeometry(List<Map<String, dynamic>> geometry) {
+    if (geometry.isEmpty) {
+      return '';
+    }
+
+    final step = math.max(1, geometry.length ~/ 8);
+    return [
+      for (var i = 0; i < geometry.length; i += step)
+        '${_toDouble(geometry[i]['latitude'])?.toStringAsFixed(4)},${_toDouble(geometry[i]['longitude'])?.toStringAsFixed(4)}',
+    ].join('|');
+  }
+
+  RoutesModel _routeResultToModel(RouteResult routeResult, String mode) {
+    final points = routeResult.geometry
+        .map((point) => '${point['latitude']},${point['longitude']}')
+        .join('|');
+
+    return RoutesModel(
+      id_user: routeResult.userId,
+      nom:
+          'Itineraire ${_routeModeLabel(mode).toLowerCase()} vers ${routeResult.destinationLabel ?? 'destination'}',
+      points: points,
+      waypoints: const [],
+      warnings: routeResult.warnings,
+      segments:
+          routeResult.segments.map((segment) => segment.toJson()).toList(),
+      mode: mode,
+      risk_score: routeResult.riskScore,
+      date_create: DateTime.now().toString(),
+    );
+  }
+
+  double _distancePointToSegmentKm(
+    double pointLat,
+    double pointLng,
+    double startLat,
+    double startLng,
+    double endLat,
+    double endLng,
+  ) {
+    const earthRadiusKm = 6371.0;
+    final latReference = _toRadians((pointLat + startLat + endLat) / 3);
+
+    final px = _toRadians(pointLng) * math.cos(latReference) * earthRadiusKm;
+    final py = _toRadians(pointLat) * earthRadiusKm;
+    final sx = _toRadians(startLng) * math.cos(latReference) * earthRadiusKm;
+    final sy = _toRadians(startLat) * earthRadiusKm;
+    final ex = _toRadians(endLng) * math.cos(latReference) * earthRadiusKm;
+    final ey = _toRadians(endLat) * earthRadiusKm;
+
+    final dx = ex - sx;
+    final dy = ey - sy;
+    if (dx == 0 && dy == 0) {
+      return Geolocator.distanceBetween(
+            pointLat,
+            pointLng,
+            startLat,
+            startLng,
+          ) /
+          1000;
+    }
+
+    final t = (((px - sx) * dx) + ((py - sy) * dy)) / ((dx * dx) + (dy * dy));
+    final clampedT = t.clamp(0.0, 1.0);
+    final closestX = sx + (clampedT * dx);
+    final closestY = sy + (clampedT * dy);
+    final xDistance = px - closestX;
+    final yDistance = py - closestY;
+    return math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
+  }
+
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
@@ -261,99 +965,232 @@ class _IteneraireState extends State<Iteneraire> {
         backgroundColor: Colors.transparent,
         leading: const BackButton(color: Colors.black),
       ),
-      body: routeErrorMessage != null
-          ? Column(
-              children: [
-                const NetworkStatusBanner(),
-                Expanded(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        routeErrorMessage!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+      body:
+          isMapInitializing
+              ? const Column(
+                children: [
+                  NetworkStatusBanner(),
+                  Expanded(child: Center(child: CircularProgressIndicator())),
+                ],
+              )
+              : routeErrorMessage != null
+              ? Column(
+                children: [
+                  const NetworkStatusBanner(),
+                  Expanded(
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          routeErrorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                const NetworkStatusBanner(),
-                Expanded(
-                  child: SizedBox(
-                    height: height,
-                    width: width,
-                    child: Stack(
-                      children: [
-                        GoogleMap(
-                          initialCameraPosition: CameraPosition(
-                            target: center,
-                            zoom: 12,
+                ],
+              )
+              : Column(
+                children: [
+                  const NetworkStatusBanner(),
+                  Expanded(
+                    child: SizedBox(
+                      height: height,
+                      width: width,
+                      child: Stack(
+                        children: [
+                          GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: center,
+                              zoom: 12,
+                            ),
+                            onMapCreated: (controller) {
+                              mapController = controller;
+                              if (bounds != null) {
+                                controller
+                                    .animateCamera(
+                                      CameraUpdate.newLatLngBounds(bounds!, 50),
+                                    )
+                                    .then((_) {
+                                      networkStatusService.markOnline();
+                                    })
+                                    .catchError((error) {
+                                      networkStatusService.markOffline();
+                                      Setting.showMessage(
+                                        'login_error'.tr,
+                                        'itinerary_map_error'.tr,
+                                      );
+                                      printDebug(
+                                        'Erreur lors du cadrage initial de la carte: $error',
+                                      );
+                                    });
+                              }
+                            },
+                            markers: markers,
+                            polylines: polylines,
+                            myLocationEnabled: currentPosition != null,
+                            myLocationButtonEnabled: true,
+                            zoomControlsEnabled: true,
+                            zoomGesturesEnabled: true,
+                            scrollGesturesEnabled: true,
+                            rotateGesturesEnabled: true,
+                            tiltGesturesEnabled: true,
+                            mapToolbarEnabled: false,
+                            mapType: MapType.normal,
+                            padding: EdgeInsets.only(bottom: height * 0.35),
                           ),
-                          onMapCreated: (controller) {
-                            mapController = controller;
-                            if (bounds != null) {
-                              controller
-                                  .animateCamera(
-                                    CameraUpdate.newLatLngBounds(bounds!, 50),
-                                  )
-                                  .then((_) {
-                                    networkStatusService.markOnline();
-                                  })
-                                  .catchError((error) {
-                                    networkStatusService.markOffline();
-                                    Setting.showMessage(
-                                      'login_error'.tr,
-                                      'itinerary_map_error'.tr,
-                                    );
-                                    printDebug(
-                                      'Erreur lors du cadrage initial de la carte: $error',
-                                    );
-                                  });
-                            }
-                          },
-                          markers: markers,
-                          polylines: polylines,
-                          myLocationEnabled: true,
-                          myLocationButtonEnabled: true,
-                          zoomControlsEnabled: true,
-                          mapToolbarEnabled: false,
-                        ),
-                        Positioned(
-                          right: 16,
-                          bottom: height * 0.45,
-                          child: FloatingActionButton(
-                            heroTag: 'recenter',
-                            onPressed: _recenterMap,
-                            backgroundColor: Colors.white,
-                            child: Icon(
-                              LucideIcons.maximize2,
-                              color: AppColors.primary,
+                          Positioned(
+                            right: 16,
+                            bottom: height * 0.45,
+                            child: FloatingActionButton(
+                              heroTag: 'recenter',
+                              onPressed: _recenterMap,
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                LucideIcons.maximize2,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: NavigationBottomSheet(
-                            route: widget.route,
-                            onStartNavigation:
-                                isNavigating
-                                    ? _stopNavigation
-                                    : _startNavigation,
-                            isNavigating: isNavigating,
+                          Positioned(
+                            top: 16,
+                            left: 16,
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  isLoadingRouteMode
+                                      ? null
+                                      : _showRouteModeSheet,
+                              icon: const Icon(Icons.tune),
+                              label: Text(
+                                isLoadingRouteMode
+                                    ? 'Calcul...'
+                                    : _routeModeLabel(
+                                      widget.route?.mode ?? 'fast',
+                                    ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppColors.primary,
+                                elevation: 4,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          Positioned(
+                            top: 16,
+                            right: 16,
+                            child: ElevatedButton.icon(
+                              onPressed: isReporting ? null : _showReportSheet,
+                              icon: const Icon(Icons.report_problem_outlined),
+                              label: Text(
+                                isReporting ? 'Envoi...' : 'Signaler',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFE53935),
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 64,
+                            right: 16,
+                            child: ElevatedButton.icon(
+                              onPressed:
+                                  isLoadingAlternative
+                                      ? null
+                                      : _showSaferAlternative,
+                              icon: const Icon(Icons.alt_route),
+                              label: Text(
+                                isLoadingAlternative
+                                    ? 'Recherche...'
+                                    : 'Alternative',
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            child: NavigationBottomSheet(
+                              route: widget.route,
+                              onStartNavigation:
+                                  isNavigating
+                                      ? _stopNavigation
+                                      : _startNavigation,
+                              isNavigating: isNavigating,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+    );
+  }
+}
+
+class _RouteModeOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  const _RouteModeOption({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: AppColors.primary),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    description,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -433,13 +1270,145 @@ class NavigationBottomSheet extends StatelessWidget {
     return 'itinerary_warning_summary'.trParams({'count': '$count'});
   }
 
+  List<Map<String, dynamic>> _routeSegments() {
+    return route?.segments ?? const [];
+  }
+
+  String _formatSegmentDistance(dynamic distance) {
+    final km =
+        distance is num ? distance.toDouble() : double.tryParse('$distance');
+    if (km == null || km <= 0) {
+      return '';
+    }
+    if (km < 1) {
+      return '${(km * 1000).round()} m';
+    }
+    return '${km.toStringAsFixed(1)} km';
+  }
+
+  Widget _buildSegmentsList(List<Map<String, dynamic>> segments) {
+    if (segments.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Instructions de navigation',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          const SizedBox(height: 8),
+          ...segments.take(8).toList().asMap().entries.map((entry) {
+            final index = entry.key;
+            final segment = entry.value;
+            final instruction =
+                segment['instruction']?.toString().trim().isNotEmpty == true
+                    ? segment['instruction'].toString()
+                    : 'Continuer sur l itineraire';
+            final distance = _formatSegmentDistance(segment['distance']);
+            final riskLevel = segment['riskLevel']?.toString();
+            final isRisky = riskLevel == 'high' || riskLevel == 'medium';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color:
+                    isRisky ? const Color(0xFFFFF4E5) : const Color(0xFFF8F9FB),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color:
+                      isRisky
+                          ? const Color(0xFFF4B860)
+                          : const Color(0xFFE5E7EB),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          instruction,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (distance.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            distance,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        if (isRisky) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            riskLevel == 'high'
+                                ? 'Zone a risque eleve'
+                                : 'Zone a risque moyen',
+                            style: const TextStyle(
+                              color: Color(0xFF8A5200),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (segments.length > 8)
+            Text(
+              '+ ${segments.length - 8} autre(s) instruction(s)',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
+    final segments = _routeSegments();
+    final hasDetails =
+        route?.warnings?.isNotEmpty == true || segments.isNotEmpty;
 
     return Container(
-      height:
-          route?.warnings?.isNotEmpty == true ? height * 0.38 : height * 0.3,
+      height: hasDetails ? height * 0.55 : height * 0.3,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
@@ -448,7 +1417,7 @@ class NavigationBottomSheet extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             spreadRadius: 0,
           ),
@@ -526,50 +1495,60 @@ class NavigationBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          if (route?.warnings?.isNotEmpty == true)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF4E5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFF4B860)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Color(0xFFC97A00),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 16, bottom: 4),
+              child: Column(
+                children: [
+                  if (route?.warnings?.isNotEmpty == true)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF4E5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFF4B860)),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'itinerary_reported_route'.tr,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF8A5200),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Color(0xFFC97A00),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'itinerary_reported_route'.tr,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF8A5200),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _buildWarningSummary(route?.warnings),
+                              style: const TextStyle(
+                                color: Color(0xFF8A5200),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _buildWarningSummary(route?.warnings),
-                      style: const TextStyle(
-                        color: Color(0xFF8A5200),
-                        fontSize: 13,
                       ),
                     ),
-                  ],
-                ),
+                  if (route?.warnings?.isNotEmpty == true)
+                    const SizedBox(height: 12),
+                  _buildSegmentsList(segments),
+                ],
               ),
             ),
-          if (route?.warnings?.isNotEmpty == true) const SizedBox(height: 12),
+          ),
           Padding(
             padding: const EdgeInsets.all(16),
             child: ElevatedButton(

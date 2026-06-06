@@ -4,7 +4,6 @@ import 'package:botroad/controllers/conversations_controller.dart';
 import 'package:botroad/controllers/home_controller.dart';
 import 'package:botroad/controllers/locations_controller.dart';
 import 'package:botroad/controllers/messages_controller.dart';
-import 'package:botroad/controllers/payments_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:botroad/controllers/trending_locations_controller.dart';
 import 'package:botroad/controllers/user_controller.dart';
@@ -149,15 +148,6 @@ class Setting {
       .collection("TripHistory");
   static CollectionReference<Map<String, dynamic>> fRoadReports = firestore
       .collection("RoadReports");
-
-  static CollectionReference fPayments = firestore.collection("Payments");
-  static PaymentsController get paymentsCtrl {
-    try {
-      return Get.find<PaymentsController>();
-    } catch (e) {
-      return Get.put(PaymentsController());
-    }
-  }
 
   static CollectionReference fTrending_locations = firestore.collection(
     "Trending_locations",

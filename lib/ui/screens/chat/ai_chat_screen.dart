@@ -68,6 +68,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   late final RoutingService routingService;
   late final TripHistoryService tripHistoryService;
   Position? currentPosition;
+  RoutesModel? lastRoute;
 
   @override
   void initState() {
@@ -76,6 +77,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     initAiServices();
     _setupScrollListener();
     _getCurrentLocation();
+    _loadLatestRoute();
   }
 
   void _setupScrollListener() {
@@ -104,9 +106,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
             : Get.put(NetworkStatusService(), permanent: true);
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
-    routingService = RoutingService(
-      googleApiKey: AppSecrets.googleMapsApiKey,
-    );
+    routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
     tripHistoryService = TripHistoryService(collection: Setting.fTripHistory);
   }
 
@@ -161,6 +161,28 @@ class _AIChatScreenState extends State<AIChatScreen> {
       backgroundColor: Colors.red,
       colorText: Colors.white,
     );
+  }
+
+  Future<void> _loadLatestRoute() async {
+    final userId = Setting.userCtrl.user.value.key;
+    if (userId == null) {
+      return;
+    }
+
+    final routes = await routesCtrl.getRoutesOfUser(userId);
+    if (!mounted || routes == null || routes.isEmpty) {
+      return;
+    }
+
+    routes.sort((a, b) {
+      final aDate = DateTime.tryParse(a.date_create ?? '') ?? DateTime(1970);
+      final bDate = DateTime.tryParse(b.date_create ?? '') ?? DateTime(1970);
+      return bDate.compareTo(aDate);
+    });
+
+    setState(() {
+      lastRoute = routes.first;
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -260,6 +282,9 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
 
         if (route != null) {
           // Naviguer vers la page d'itinéraire
+          setState(() {
+            lastRoute = route;
+          });
           Get.to(() => Iteneraire(route: route));
           return;
         }
@@ -323,18 +348,32 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       if (request.intent == ChatIntentService.calculateRouteIntent &&
           navigationResult.isReadyForRouting) {
-        final rawRouteResult = await routingService.calculateRoute(
-          userId: Setting.userCtrl.user.value.key,
-          startLat: request.startLat!,
-          startLng: request.startLng!,
-          destinationLat: request.destinationLat!,
-          destinationLng: request.destinationLng!,
-          startLabel: request.startText,
-          destinationLabel: request.destinationText,
-        );
+        final routeMode = _detectRouteMode(content);
+        final rawRouteResult =
+            routeMode == 'fast'
+                ? await routingService.calculateRoute(
+                  userId: Setting.userCtrl.user.value.key,
+                  startLat: request.startLat!,
+                  startLng: request.startLng!,
+                  destinationLat: request.destinationLat!,
+                  destinationLng: request.destinationLng!,
+                  startLabel: request.startText,
+                  destinationLabel: request.destinationText,
+                )
+                : await _calculateBestRouteForMode(
+                  mode: routeMode,
+                  startLat: request.startLat!,
+                  startLng: request.startLng!,
+                  destinationLat: request.destinationLat!,
+                  destinationLng: request.destinationLng!,
+                  startLabel: request.startText,
+                  destinationLabel: request.destinationText,
+                );
 
         if (rawRouteResult != null) {
-          final routeResult = await routeRiskService.attachWarnings(rawRouteResult);
+          final routeResult = await routeRiskService.attachWarnings(
+            rawRouteResult,
+          );
           final route = await _persistRouteResult(routeResult);
           if (route == null) {
             await _saveBotMessage(
@@ -346,13 +385,23 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
           await _saveTripHistory(content, routeResult);
 
-          final warningText = routeResult.warnings.isNotEmpty
-              ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
-              : '';
+          final warningText =
+              routeResult.warnings.isNotEmpty
+                  ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
+                  : '';
+          final modeText =
+              routeResult.mode == 'safe'
+                  ? " en mode sûr"
+                  : routeResult.mode == 'balanced'
+                  ? " en mode équilibré"
+                  : "";
           final botMessage =
-              "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
+              "J'ai trouve un itineraire$modeText de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
 
           await _saveBotMessage(conversationId, botMessage);
+          setState(() {
+            lastRoute = route;
+          });
           Get.to(() => Iteneraire(route: route));
           return true;
         }
@@ -397,22 +446,23 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = places.map((place) {
-          final distance = place.distance?.toStringAsFixed(1) ?? '?';
-          final rating =
-              place.rating != null ? ' - note ${place.rating!.toStringAsFixed(1)}' : '';
-          return "- ${place.name} (${distance} km${rating})";
-        }).join('\n');
+        final lines = places
+            .map((place) {
+              final distance = place.distance?.toStringAsFixed(1) ?? '?';
+              final rating =
+                  place.rating != null
+                      ? ' - note ${place.rating!.toStringAsFixed(1)}'
+                      : '';
+              return "- ${place.name} ($distance km$rating)";
+            })
+            .join('\n');
 
         final title =
             (request.resultCount ?? 1) > 1
                 ? "Voici les ${places.length} ${request.category} les plus proches :"
                 : "Voici le ${request.category} le plus proche :";
 
-        await _saveBotMessage(
-          conversationId,
-          "$title\n$lines",
-        );
+        await _saveBotMessage(conversationId, "$title\n$lines");
         return true;
       }
 
@@ -439,13 +489,16 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = historyItems.map((item) {
-          final origin = item.originLabel ?? 'Depart inconnu';
-          final destination = item.destinationLabel ?? 'Destination inconnue';
-          final distance = item.distance.toStringAsFixed(1);
-          final duration = item.duration.toStringAsFixed(0);
-          return "- $origin -> $destination ($distance km, $duration min)";
-        }).join('\n');
+        final lines = historyItems
+            .map((item) {
+              final origin = item.originLabel ?? 'Depart inconnu';
+              final destination =
+                  item.destinationLabel ?? 'Destination inconnue';
+              final distance = item.distance.toStringAsFixed(1);
+              final duration = item.duration.toStringAsFixed(0);
+              return "- $origin -> $destination ($distance km, $duration min)";
+            })
+            .join('\n');
 
         await _saveBotMessage(
           conversationId,
@@ -464,11 +517,11 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final report = roadReportService.buildUserReport(
+        final report = roadReportService.buildReportFromMessage(
           userId: Setting.userCtrl.user.value.key,
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
-          comment: content,
+          message: content,
         );
 
         final reportId = await roadReportService.saveRoadReport(report);
@@ -495,12 +548,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   }
 
   Future<RoutesModel?> _persistRouteResult(RouteResult routeResult) async {
-    final points =
-        routeResult.geometry
-            .map(
-              (point) => '${point['latitude']},${point['longitude']}',
-            )
-            .join('|');
+    final points = routeResult.geometry
+        .map((point) => '${point['latitude']},${point['longitude']}')
+        .join('|');
 
     final route = RoutesModel(
       id_user: routeResult.userId,
@@ -509,6 +559,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       points: points,
       waypoints: const [],
       warnings: routeResult.warnings,
+      segments:
+          routeResult.segments.map((segment) => segment.toJson()).toList(),
+      mode: routeResult.mode,
+      risk_score: routeResult.riskScore,
       date_create: DateTime.now().toString(),
     );
 
@@ -520,6 +574,76 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
     route.key = key;
     return route;
+  }
+
+  Future<RouteResult?> _calculateBestRouteForMode({
+    required String mode,
+    required double startLat,
+    required double startLng,
+    required double destinationLat,
+    required double destinationLng,
+    String? startLabel,
+    String? destinationLabel,
+  }) async {
+    final routes = await routingService.calculateRoutes(
+      userId: Setting.userCtrl.user.value.key,
+      startLat: startLat,
+      startLng: startLng,
+      destinationLat: destinationLat,
+      destinationLng: destinationLng,
+      startLabel: startLabel,
+      destinationLabel: destinationLabel,
+      alternatives: true,
+    );
+
+    if (routes.isEmpty) {
+      return null;
+    }
+
+    final checkedRoutes = await routeRiskService.attachWarningsToRoutes(routes);
+    return routeRiskService.chooseBestRoute(checkedRoutes, mode);
+  }
+
+  String _detectRouteMode(String message) {
+    final normalized = _normalizeForIntent(message);
+    final asksSafeRoute = [
+      'itineraire sur',
+      'route sure',
+      'route securisee',
+      'itineraire securise',
+      'moins dangereux',
+      'eviter les risques',
+      'evite les risques',
+      'sans danger',
+    ].any(normalized.contains);
+    if (asksSafeRoute) {
+      return 'safe';
+    }
+
+    final asksBalancedRoute = [
+      'equilibre',
+      'compromis',
+      'entre rapide et sur',
+      'entre rapidite et securite',
+    ].any(normalized.contains);
+    if (asksBalancedRoute) {
+      return 'balanced';
+    }
+
+    return 'fast';
+  }
+
+  String _normalizeForIntent(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll(RegExp(r'[àáâãäå]'), 'a')
+        .replaceAll(RegExp(r'[èéêë]'), 'e')
+        .replaceAll(RegExp(r'[ìíîï]'), 'i')
+        .replaceAll(RegExp(r'[òóôõö]'), 'o')
+        .replaceAll(RegExp(r'[ùúûü]'), 'u')
+        .replaceAll('ç', 'c')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
   }
 
   Future<void> _saveTripHistory(
@@ -611,7 +735,6 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     });
 
     try {
-
       // Si pas de conversation, en créer une nouvelle
       if (conversationId == null) {
         conversationsCtrl.conversations.value = ConversationsModel(
@@ -642,7 +765,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       await messagesCtrl.addMessages();
       _updateConversationMemory('user', content);
 
-      final handledByMvp = await _tryHandleMvpNavigation(content, conversationId);
+      final handledByMvp = await _tryHandleMvpNavigation(
+        content,
+        conversationId,
+      );
       if (handledByMvp) {
         networkStatusService.markOnline();
         _scrollToBottom();
@@ -844,6 +970,14 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
+          if (lastRoute?.points?.trim().isNotEmpty == true)
+            IconButton(
+              tooltip: 'Reouvrir la carte',
+              icon: const Icon(Icons.map_outlined),
+              onPressed: () {
+                Get.to(() => Iteneraire(route: lastRoute));
+              },
+            ),
           IconButton(
             icon: Icon(isSearching ? Icons.close : Icons.search),
             onPressed: () {
@@ -898,7 +1032,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               stream: _getMessagesStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  final friendlyError = _toFriendlyErrorMessage(snapshot.error!);
+                  final friendlyError = _toFriendlyErrorMessage(
+                    snapshot.error!,
+                  );
                   if (!_didShowMessagesStreamError) {
                     _didShowMessagesStreamError = true;
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -915,9 +1051,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                     child: Padding(
                       padding: const EdgeInsets.all(24),
                       child: Text(
-                        'chat_error_prefix'.trParams({
-                          'error': friendlyError,
-                        }),
+                        'chat_error_prefix'.trParams({'error': friendlyError}),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -1053,7 +1187,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                                   fontSize: 10,
                                   color:
                                       isUser
-                                          ? Colors.white.withOpacity(0.7)
+                                          ? Colors.white.withValues(alpha: 0.7)
                                           : Colors.black54,
                                 ),
                               ),
@@ -1078,7 +1212,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
+                  color: Colors.grey.withValues(alpha: 0.2),
                   spreadRadius: 1,
                   blurRadius: 3,
                   offset: const Offset(0, -1),

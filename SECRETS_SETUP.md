@@ -18,7 +18,6 @@ Example:
 
 ```json
 {
-  "OPENAI_API_KEY": "your-openai-api-key",
   "GOOGLE_MAPS_API_KEY": "your-google-maps-api-key"
 }
 ```
@@ -33,27 +32,6 @@ flutter run --dart-define-from-file=dart_defines.json
 
 ## Notes
 
-- `OPENAI_API_KEY` is still used by the chatbot service on mobile.
 - `GOOGLE_MAPS_API_KEY` is used by Dart services for Places/routing and by Android for map rendering.
+- The chatbot uses Gemini through Firebase AI Logic, configured by the Firebase project files.
 - `firebase_options.dart` was not changed here because Firebase client config is not treated like a server secret.
-
-## 4. Web chatbot backend
-
-For the web app, the chatbot now uses a Firebase Function instead of calling OpenAI directly from the browser.
-
-Create `functions/.env` from `functions/.env.example`:
-
-```properties
-OPENAI_API_KEY=your-openai-api-key
-```
-
-Then install and deploy the function:
-
-```bash
-cd functions
-npm install
-cd ..
-firebase deploy --only functions
-```
-
-The function name used by the Flutter app is `generateChatResponse`.

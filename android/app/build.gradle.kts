@@ -7,6 +7,7 @@ plugins {
 }
 
 import java.util.Properties
+import java.util.Base64
 
 val localProperties = Properties().apply {
     val localPropertiesFile = rootProject.file("local.properties")
@@ -15,8 +16,29 @@ val localProperties = Properties().apply {
     }
 }
 
+val dartDefines =
+    (project.findProperty("dart-defines") as String?)
+        ?.split(",")
+        ?.mapNotNull { encoded ->
+            runCatching {
+                String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+            }.getOrNull()
+        }
+        ?.mapNotNull { define ->
+            val separatorIndex = define.indexOf("=")
+            if (separatorIndex <= 0) {
+                null
+            } else {
+                define.substring(0, separatorIndex) to
+                    define.substring(separatorIndex + 1)
+            }
+        }
+        ?.toMap()
+        ?: emptyMap()
+
 val googleMapsApiKey =
     localProperties.getProperty("GOOGLE_MAPS_API_KEY")
+        ?: dartDefines["GOOGLE_MAPS_API_KEY"]
         ?: System.getenv("GOOGLE_MAPS_API_KEY")
         ?: ""
 
@@ -39,7 +61,7 @@ android {
         applicationId = "com.eta.celeste.botroad"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23//flutter.minSdkVersion
+        minSdk = flutter.minSdkVersion//flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

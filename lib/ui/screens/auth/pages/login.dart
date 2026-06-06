@@ -1,4 +1,4 @@
-import 'package:botroad/ui/screens/splash/introduction/presentation.dart';
+import 'package:botroad/ui/screens/home/home.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/textfield.dart';
 import 'package:botroad/utils/Setting.dart';
@@ -71,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      Get.offAll(() => const Presentation());
+      Get.offAll(() => const HomeScreen());
     } else {
       Setting.showMessage(
         'login_error'.tr,
