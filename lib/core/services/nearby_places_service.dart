@@ -9,10 +9,7 @@ class NearbyPlacesService {
   final List<String> countries;
   FlutterGooglePlacesSdk? _placesSdk;
 
-  NearbyPlacesService({
-    required this.apiKey,
-    this.countries = const ['CD'],
-  });
+  NearbyPlacesService({required this.apiKey, this.countries = const ['CD']});
 
   Future<List<NearbyPlace>> findNearbyPlaces({
     required double latitude,
@@ -40,10 +37,15 @@ class NearbyPlacesService {
         return const [];
       }
 
-      final predictions = response.predictions.take(resultCount).toList();
+      final predictions =
+          response.predictions.toList()..sort((a, b) {
+            final aDistance = a.distanceMeters ?? 1 << 30;
+            final bDistance = b.distanceMeters ?? 1 << 30;
+            return aDistance.compareTo(bDistance);
+          });
       final places = <NearbyPlace>[];
 
-      for (final prediction in predictions) {
+      for (final prediction in predictions.take(resultCount)) {
         final details = await sdk.fetchPlace(
           prediction.placeId,
           fields: const [
@@ -68,10 +70,11 @@ class NearbyPlacesService {
             category: normalizedCategory,
             latitude: latLng.lat,
             longitude: latLng.lng,
-            distance: (prediction.distanceMeters != null &&
-                    prediction.distanceMeters! > 0)
-                ? prediction.distanceMeters! / 1000
-                : _distanceKm(latitude, longitude, latLng.lat, latLng.lng),
+            distance:
+                (prediction.distanceMeters != null &&
+                        prediction.distanceMeters! > 0)
+                    ? prediction.distanceMeters! / 1000
+                    : _distanceKm(latitude, longitude, latLng.lat, latLng.lng),
             address: place.address,
             rating: place.rating,
             source: 'google_places',
@@ -79,10 +82,49 @@ class NearbyPlacesService {
         );
       }
 
+      places.sort((a, b) {
+        final aDistance = a.distance ?? double.infinity;
+        final bDistance = b.distance ?? double.infinity;
+        return aDistance.compareTo(bDistance);
+      });
       return places;
     } catch (_) {
       return const [];
     }
+  }
+
+  Future<NearbyPlace?> findNearestReference({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final queries = <String>[
+      'restaurant',
+      'pharmacie',
+      'station service',
+      'avenue',
+      'rue',
+      'ecole',
+      'banque',
+    ];
+    final candidates = <NearbyPlace>[];
+
+    for (final query in queries) {
+      candidates.addAll(
+        await _findPlacesByQuery(
+          latitude: latitude,
+          longitude: longitude,
+          query: query,
+          resultCount: 2,
+        ),
+      );
+    }
+
+    candidates.sort((a, b) {
+      final aDistance = a.distance ?? double.infinity;
+      final bDistance = b.distance ?? double.infinity;
+      return aDistance.compareTo(bDistance);
+    });
+    return candidates.isEmpty ? null : candidates.first;
   }
 
   LatLngBounds _buildLocationBias(double latitude, double longitude) {
@@ -101,6 +143,10 @@ class NearbyPlacesService {
       'hopitaux': 'hopital',
       'restaurant': 'restaurant',
       'restaurants': 'restaurant',
+      'restau': 'restaurant',
+      'restaus': 'restaurant',
+      'resto': 'restaurant',
+      'restos': 'restaurant',
       'jardin': 'jardin',
       'jardins': 'jardin',
       'ecole': 'ecole',
@@ -127,6 +173,70 @@ class NearbyPlacesService {
     }
   }
 
+  Future<List<NearbyPlace>> _findPlacesByQuery({
+    required double latitude,
+    required double longitude,
+    required String query,
+    required int resultCount,
+  }) async {
+    try {
+      await _ensureInitialized();
+      final sdk = _getSdk();
+      final response = await sdk.findAutocompletePredictions(
+        query,
+        countries: countries,
+        origin: LatLng(lat: latitude, lng: longitude),
+        locationBias: _buildLocationBias(latitude, longitude),
+      );
+
+      final predictions =
+          response.predictions.toList()..sort((a, b) {
+            final aDistance = a.distanceMeters ?? 1 << 30;
+            final bDistance = b.distanceMeters ?? 1 << 30;
+            return aDistance.compareTo(bDistance);
+          });
+      final places = <NearbyPlace>[];
+
+      for (final prediction in predictions.take(resultCount)) {
+        final details = await sdk.fetchPlace(
+          prediction.placeId,
+          fields: const [
+            PlaceField.Name,
+            PlaceField.Address,
+            PlaceField.Location,
+            PlaceField.Types,
+          ],
+        );
+        final place = details.place;
+        final latLng = place?.latLng;
+        if (place == null || latLng == null) {
+          continue;
+        }
+
+        places.add(
+          NearbyPlace(
+            id: place.id,
+            name: place.name ?? prediction.primaryText,
+            category: query,
+            latitude: latLng.lat,
+            longitude: latLng.lng,
+            distance:
+                (prediction.distanceMeters != null &&
+                        prediction.distanceMeters! > 0)
+                    ? prediction.distanceMeters! / 1000
+                    : _distanceKm(latitude, longitude, latLng.lat, latLng.lng),
+            address: place.address,
+            source: 'google_places',
+          ),
+        );
+      }
+
+      return places;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   FlutterGooglePlacesSdk _getSdk() {
     _placesSdk ??= FlutterGooglePlacesSdk(apiKey);
     return _placesSdk!;
@@ -136,19 +246,15 @@ class NearbyPlacesService {
     return category.trim().toLowerCase();
   }
 
-  double _distanceKm(
-    double lat1,
-    double lng1,
-    double lat2,
-    double lng2,
-  ) {
+  double _distanceKm(double lat1, double lng1, double lat2, double lng2) {
     const earthRadiusKm = 6371.0;
     final dLat = _degToRad(lat2 - lat1);
     final dLng = _degToRad(lng2 - lng1);
     final sinLat = math.sin(dLat / 2);
     final sinLng = math.sin(dLng / 2);
 
-    final a = (sinLat * sinLat) +
+    final a =
+        (sinLat * sinLat) +
         math.cos(_degToRad(lat1)) *
             math.cos(_degToRad(lat2)) *
             (sinLng * sinLng);

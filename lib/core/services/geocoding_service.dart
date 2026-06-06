@@ -33,7 +33,11 @@ class GeocodingService {
 
   GeocodingService({required this.apiKey, this.countries = const ['CD']});
 
-  Future<GeocodingResult?> geocodePlace(String placeName) async {
+  Future<GeocodingResult?> geocodePlace(
+    String placeName, {
+    double? biasLatitude,
+    double? biasLongitude,
+  }) async {
     try {
       final query = placeName.trim();
       if (query.isEmpty) {
@@ -44,13 +48,27 @@ class GeocodingService {
       final predictions = await placesSdk.findAutocompletePredictions(
         query,
         countries: countries,
+        origin:
+            biasLatitude != null && biasLongitude != null
+                ? LatLng(lat: biasLatitude, lng: biasLongitude)
+                : null,
+        locationBias:
+            biasLatitude != null && biasLongitude != null
+                ? _buildLocationBias(biasLatitude, biasLongitude)
+                : null,
       );
 
       if (predictions.predictions.isEmpty) {
         return null;
       }
 
-      final firstPrediction = predictions.predictions.first;
+      final rankedPredictions =
+          predictions.predictions.toList()..sort((a, b) {
+            final aDistance = a.distanceMeters ?? 1 << 30;
+            final bDistance = b.distanceMeters ?? 1 << 30;
+            return aDistance.compareTo(bDistance);
+          });
+      final firstPrediction = rankedPredictions.first;
       final details = await placesSdk.fetchPlace(
         firstPrediction.placeId,
         fields: [PlaceField.Name, PlaceField.Address, PlaceField.Location],
@@ -77,5 +95,13 @@ class GeocodingService {
   FlutterGooglePlacesSdk _getSdk() {
     _placesSdk ??= FlutterGooglePlacesSdk(apiKey);
     return _placesSdk!;
+  }
+
+  LatLngBounds _buildLocationBias(double latitude, double longitude) {
+    const delta = 0.06;
+    return LatLngBounds(
+      southwest: LatLng(lat: latitude - delta, lng: longitude - delta),
+      northeast: LatLng(lat: latitude + delta, lng: longitude + delta),
+    );
   }
 }

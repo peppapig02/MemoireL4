@@ -5,6 +5,7 @@ import 'package:botroad/core/config/app_secrets.dart';
 import 'package:botroad/core/models/route_result.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/network_status_service.dart';
+import 'package:botroad/core/services/nearby_places_service.dart';
 import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
 import 'package:botroad/models/routes_model.dart';
@@ -35,6 +36,7 @@ class _IteneraireState extends State<Iteneraire> {
   String? routeErrorMessage;
   late final NetworkStatusService networkStatusService;
   late final RoadReportService roadReportService;
+  late final NearbyPlacesService nearbyPlacesService;
   late final RouteRiskService routeRiskService;
   late final RoutingService routingService;
   Position? currentPosition;
@@ -52,6 +54,9 @@ class _IteneraireState extends State<Iteneraire> {
             ? Get.find<NetworkStatusService>()
             : Get.put(NetworkStatusService(), permanent: true);
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
+    nearbyPlacesService = NearbyPlacesService(
+      apiKey: AppSecrets.googleMapsApiKey,
+    );
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
     routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
     _initializeMap();
@@ -623,10 +628,16 @@ class _IteneraireState extends State<Iteneraire> {
         return;
       }
 
+      final locationReference = await nearbyPlacesService.findNearestReference(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
       final report = roadReportService.buildUserReport(
         userId: Setting.userCtrl.user.value.key,
         latitude: position.latitude,
         longitude: position.longitude,
+        locationLabel: locationReference?.name,
+        locationAddress: locationReference?.address,
         segmentId: _nearestSegmentId(position.latitude, position.longitude),
         routeId: widget.route?.key,
         type: type,
@@ -1038,11 +1049,11 @@ class _IteneraireState extends State<Iteneraire> {
                             tiltGesturesEnabled: true,
                             mapToolbarEnabled: false,
                             mapType: MapType.normal,
-                            padding: EdgeInsets.only(bottom: height * 0.35),
+                            padding: EdgeInsets.only(bottom: height * 0.24),
                           ),
                           Positioned(
                             right: 16,
-                            bottom: height * 0.45,
+                            bottom: height * 0.32,
                             child: FloatingActionButton(
                               heroTag: 'recenter',
                               onPressed: _recenterMap,
@@ -1113,18 +1124,23 @@ class _IteneraireState extends State<Iteneraire> {
                               ),
                             ),
                           ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: NavigationBottomSheet(
-                              route: widget.route,
-                              onStartNavigation:
-                                  isNavigating
-                                      ? _stopNavigation
-                                      : _startNavigation,
-                              isNavigating: isNavigating,
-                            ),
+                          DraggableScrollableSheet(
+                            minChildSize: 0.18,
+                            initialChildSize: 0.34,
+                            maxChildSize: 0.78,
+                            snap: true,
+                            snapSizes: const [0.18, 0.34, 0.78],
+                            builder: (context, scrollController) {
+                              return NavigationBottomSheet(
+                                route: widget.route,
+                                scrollController: scrollController,
+                                onStartNavigation:
+                                    isNavigating
+                                        ? _stopNavigation
+                                        : _startNavigation,
+                                isNavigating: isNavigating,
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -1197,12 +1213,14 @@ class _RouteModeOption extends StatelessWidget {
 
 class NavigationBottomSheet extends StatelessWidget {
   final RoutesModel? route;
+  final ScrollController? scrollController;
   final Function()? onStartNavigation;
   final bool isNavigating;
 
   const NavigationBottomSheet({
     super.key,
     this.route,
+    this.scrollController,
     this.onStartNavigation,
     this.isNavigating = false,
   });
@@ -1301,7 +1319,7 @@ class NavigationBottomSheet extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 8),
-          ...segments.take(8).toList().asMap().entries.map((entry) {
+          ...segments.asMap().entries.map((entry) {
             final index = entry.key;
             final segment = entry.value;
             final instruction =
@@ -1390,11 +1408,6 @@ class NavigationBottomSheet extends StatelessWidget {
               ),
             );
           }),
-          if (segments.length > 8)
-            Text(
-              '+ ${segments.length - 8} autre(s) instruction(s)',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
         ],
       ),
     );
@@ -1402,13 +1415,8 @@ class NavigationBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.of(context).size.height;
     final segments = _routeSegments();
-    final hasDetails =
-        route?.warnings?.isNotEmpty == true || segments.isNotEmpty;
-
     return Container(
-      height: hasDetails ? height * 0.55 : height * 0.3,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.only(
@@ -1497,6 +1505,7 @@ class NavigationBottomSheet extends StatelessWidget {
           ),
           Expanded(
             child: SingleChildScrollView(
+              controller: scrollController,
               padding: const EdgeInsets.only(top: 16, bottom: 4),
               child: Column(
                 children: [

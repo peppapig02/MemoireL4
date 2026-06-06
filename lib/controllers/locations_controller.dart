@@ -234,7 +234,11 @@ class LocationsController extends GetxController {
     }
   }
 
-  Future<Map<String, dynamic>?> searchPlace(String query) async {
+  Future<Map<String, dynamic>?> searchPlace(
+    String query, {
+    double? biasLatitude,
+    double? biasLongitude,
+  }) async {
     try {
       if (placesSdk == null) {
         _initPlacesSdk();
@@ -244,13 +248,27 @@ class LocationsController extends GetxController {
       // Rechercher le lieu
       final predictions = await placesSdk!.findAutocompletePredictions(
         query,
+        origin:
+            biasLatitude != null && biasLongitude != null
+                ? LatLng(lat: biasLatitude, lng: biasLongitude)
+                : null,
+        locationBias:
+            biasLatitude != null && biasLongitude != null
+                ? _buildLocationBias(biasLatitude, biasLongitude)
+                : null,
         countries: ['CD'], // Limiter à la République Démocratique du Congo
       );
 
       if (predictions.predictions.isEmpty) return null;
 
       // Obtenir les détails du premier résultat
-      final place = predictions.predictions.first;
+      final rankedPredictions =
+          predictions.predictions.toList()..sort((a, b) {
+            final aDistance = a.distanceMeters ?? 1 << 30;
+            final bDistance = b.distanceMeters ?? 1 << 30;
+            return aDistance.compareTo(bDistance);
+          });
+      final place = rankedPredictions.first;
       final details = await placesSdk!.fetchPlace(
         place.placeId,
         fields: [
@@ -310,5 +328,13 @@ class LocationsController extends GetxController {
       printDebug("error searching place: $e");
       return null;
     }
+  }
+
+  LatLngBounds _buildLocationBias(double latitude, double longitude) {
+    const delta = 0.06;
+    return LatLngBounds(
+      southwest: LatLng(lat: latitude - delta, lng: longitude - delta),
+      northeast: LatLng(lat: latitude + delta, lng: longitude + delta),
+    );
   }
 }

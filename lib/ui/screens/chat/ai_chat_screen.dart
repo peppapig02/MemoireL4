@@ -251,17 +251,36 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
                 'latitude': currentPosition!.latitude,
                 'longitude': currentPosition!.longitude,
               }
-              : await locationsCtrl.searchPlace(depart);
+              : await locationsCtrl.searchPlace(
+                depart,
+                biasLatitude: currentPosition?.latitude,
+                biasLongitude: currentPosition?.longitude,
+              );
       printDebug("departPlace : $departPlace");
 
       // Rechercher le lieu d'arrivée
-      var arriveePlace = await locationsCtrl.searchPlace(arrivee);
+      var arriveePlace = await locationsCtrl.searchPlace(
+        arrivee,
+        biasLatitude:
+            (departPlace?['latitude'] as double?) ?? currentPosition?.latitude,
+        biasLongitude:
+            (departPlace?['longitude'] as double?) ??
+            currentPosition?.longitude,
+      );
       printDebug("arriveePlace : $arriveePlace");
 
       // Rechercher les étapes
       List<Map<String, dynamic>> etapesPlaces = [];
       for (var etape in etapes) {
-        var place = await locationsCtrl.searchPlace(etape);
+        var place = await locationsCtrl.searchPlace(
+          etape,
+          biasLatitude:
+              (departPlace?['latitude'] as double?) ??
+              currentPosition?.latitude,
+          biasLongitude:
+              (departPlace?['longitude'] as double?) ??
+              currentPosition?.longitude,
+        );
         if (place != null) {
           etapesPlaces.add(place);
         }
@@ -517,10 +536,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
+        final locationReference = await nearbyPlacesService
+            .findNearestReference(
+              latitude: currentLocation.latitude,
+              longitude: currentLocation.longitude,
+            );
         final report = roadReportService.buildReportFromMessage(
           userId: Setting.userCtrl.user.value.key,
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
+          locationLabel: locationReference?.name,
+          locationAddress: locationReference?.address,
           message: content,
         );
 
@@ -535,7 +561,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
         await _saveBotMessage(
           conversationId,
-          "Votre signalement de route a bien ete enregistre. Merci pour votre contribution.",
+          locationReference == null
+              ? "Votre signalement de route a bien ete enregistre. Merci pour votre contribution."
+              : "Votre signalement de route a bien ete enregistre pres de ${locationReference.name}. Merci pour votre contribution.",
         );
         return true;
       }

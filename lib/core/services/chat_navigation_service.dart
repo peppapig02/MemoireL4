@@ -74,6 +74,8 @@ class ChatNavigationService {
 
     final destinationResult = await geocodingService.geocodePlace(
       enrichedRequest.destinationText!,
+      biasLatitude: enrichedRequest.startLat,
+      biasLongitude: enrichedRequest.startLng,
     );
     if (destinationResult == null) {
       return ChatNavigationResult(
@@ -95,6 +97,8 @@ class ChatNavigationService {
           enrichedRequest.startText != 'position_actuelle') {
         final startResult = await geocodingService.geocodePlace(
           enrichedRequest.startText!,
+          biasLatitude: enrichedRequest.destinationLat,
+          biasLongitude: enrichedRequest.destinationLng,
         );
         if (startResult != null) {
           enrichedRequest = enrichedRequest.copyWith(

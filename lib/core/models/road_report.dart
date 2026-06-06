@@ -6,6 +6,8 @@ class RoadReport {
   final String? deviceId;
   final double latitude;
   final double longitude;
+  final String? locationLabel;
+  final String? locationAddress;
   final String? segmentId;
   final String? routeId;
   final String type;
@@ -28,6 +30,8 @@ class RoadReport {
     this.deviceId,
     required this.latitude,
     required this.longitude,
+    this.locationLabel,
+    this.locationAddress,
     this.segmentId,
     this.routeId,
     required this.type,
@@ -52,6 +56,8 @@ class RoadReport {
       deviceId: json['deviceId'] as String?,
       latitude: _toDouble(json['latitude']) ?? 0,
       longitude: _toDouble(json['longitude']) ?? 0,
+      locationLabel: json['locationLabel'] as String?,
+      locationAddress: json['locationAddress'] as String?,
       segmentId: json['segmentId'] as String?,
       routeId: json['routeId'] as String?,
       type: (json['type'] ?? 'autre') as String,
@@ -80,6 +86,8 @@ class RoadReport {
       'deviceId': deviceId,
       'latitude': latitude,
       'longitude': longitude,
+      'locationLabel': locationLabel,
+      'locationAddress': locationAddress,
       'segmentId': segmentId,
       'routeId': routeId,
       'type': type,
@@ -109,6 +117,8 @@ class RoadReport {
     String? deviceId,
     double? latitude,
     double? longitude,
+    String? locationLabel,
+    String? locationAddress,
     String? segmentId,
     String? routeId,
     String? type,
@@ -131,6 +141,8 @@ class RoadReport {
       deviceId: deviceId ?? this.deviceId,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      locationLabel: locationLabel ?? this.locationLabel,
+      locationAddress: locationAddress ?? this.locationAddress,
       segmentId: segmentId ?? this.segmentId,
       routeId: routeId ?? this.routeId,
       type: type ?? this.type,

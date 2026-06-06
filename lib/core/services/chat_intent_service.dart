@@ -7,10 +7,7 @@ class ChatIntentService {
   static const String showTripHistoryIntent = 'show_trip_history';
   static const String unknownIntent = 'unknown';
 
-  ChatRouteRequest parseMessage({
-    required String message,
-    String? userId,
-  }) {
+  ChatRouteRequest parseMessage({required String message, String? userId}) {
     final normalized = _normalize(message);
     final intent = _detectIntent(normalized);
 
@@ -99,17 +96,15 @@ class ChatIntentService {
     );
     final fromMatch = fromPattern.firstMatch(normalizedMessage);
     if (fromMatch != null) {
-      return _sliceFromOriginal(
-        originalMessage,
-        fromMatch.start,
-        fromMatch.end,
-      ).replaceFirst(
-        RegExp(
-          r'^\s*(je suis a|je suis au|je suis aux|depart de)\s+',
-          caseSensitive: false,
-        ),
-        '',
-      ).trim();
+      return _sliceFromOriginal(originalMessage, fromMatch.start, fromMatch.end)
+          .replaceFirst(
+            RegExp(
+              r'^\s*(je suis a|je suis au|je suis aux|depart de)\s+',
+              caseSensitive: false,
+            ),
+            '',
+          )
+          .trim();
     }
 
     final routePattern = RegExp(
@@ -120,7 +115,8 @@ class ChatIntentService {
     if (routeMatch != null) {
       return _sliceFromOriginal(
         originalMessage,
-        routeMatch.start + (routeMatch.group(0)?.indexOf(routeMatch.group(1) ?? '') ?? 0),
+        routeMatch.start +
+            (routeMatch.group(0)?.indexOf(routeMatch.group(1) ?? '') ?? 0),
         routeMatch.start +
             (routeMatch.group(0)?.indexOf(routeMatch.group(1) ?? '') ?? 0) +
             (routeMatch.group(1)?.length ?? 0),
@@ -199,6 +195,10 @@ class ChatIntentService {
       'hopital': 'hopital',
       'restaurants': 'restaurant',
       'restaurant': 'restaurant',
+      'restaus': 'restaurant',
+      'restau': 'restaurant',
+      'restos': 'restaurant',
+      'resto': 'restaurant',
       'jardins': 'jardin',
       'jardin': 'jardin',
       'ecoles': 'ecole',

@@ -3,6 +3,7 @@ import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -19,19 +20,111 @@ class _AlertsScreenState extends State<AlertsScreen> {
   String statusFilter = 'all';
   String typeFilter = 'all';
   String severityFilter = 'all';
+  Position? currentPosition;
 
   @override
   void initState() {
     super.initState();
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
-    alertsFuture = roadReportService.getRecentRoadReports(limit: 100);
+    alertsFuture = _loadAlerts();
   }
 
   Future<void> _refresh() async {
     setState(() {
-      alertsFuture = roadReportService.getRecentRoadReports(limit: 100);
+      alertsFuture = _loadAlerts();
     });
     await alertsFuture;
+  }
+
+  Future<List<RoadReport>> _loadAlerts() async {
+    final alerts = await roadReportService.getRecentRoadReports(limit: 100);
+    currentPosition = await _getCurrentPositionIfAllowed();
+    return _sortAlertsByDistance(alerts);
+  }
+
+  Future<Position?> _getCurrentPositionIfAllowed() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return null;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        return null;
+      }
+
+      return Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  List<RoadReport> _sortAlertsByDistance(List<RoadReport> alerts) {
+    final position = currentPosition;
+    final sorted = alerts.toList();
+    if (position == null) {
+      return sorted;
+    }
+
+    sorted.sort((a, b) {
+      final aDistance = _distanceFromCurrent(a) ?? double.infinity;
+      final bDistance = _distanceFromCurrent(b) ?? double.infinity;
+      return aDistance.compareTo(bDistance);
+    });
+    return sorted;
+  }
+
+  double? _distanceFromCurrent(RoadReport alert) {
+    final position = currentPosition;
+    if (position == null || (alert.latitude == 0 && alert.longitude == 0)) {
+      return null;
+    }
+
+    return Geolocator.distanceBetween(
+          position.latitude,
+          position.longitude,
+          alert.latitude,
+          alert.longitude,
+        ) /
+        1000;
+  }
+
+  String _formatDistanceFromCurrent(RoadReport alert) {
+    final distance = _distanceFromCurrent(alert);
+    if (distance == null) {
+      return 'Distance indisponible';
+    }
+    if (distance < 1) {
+      return '${(distance * 1000).round()} m de vous';
+    }
+    return '${distance.toStringAsFixed(1)} km de vous';
+  }
+
+  String _formatLocationReference(RoadReport alert) {
+    final label = alert.locationLabel?.trim();
+    final address = alert.locationAddress?.trim();
+    if (label != null &&
+        label.isNotEmpty &&
+        address != null &&
+        address.isNotEmpty) {
+      return 'Pres de $label - $address';
+    }
+    if (label != null && label.isNotEmpty) {
+      return 'Pres de $label';
+    }
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    return 'Reference non renseignee';
   }
 
   Future<void> _markHandled(RoadReport report) async {
@@ -483,6 +576,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   title: 'Localisation',
                   children: [
                     _DetailRow(
+                      label: 'Reference',
+                      value: _formatLocationReference(alert),
+                    ),
+                    _DetailRow(
+                      label: 'Distance',
+                      value: _formatDistanceFromCurrent(alert),
+                    ),
+                    _DetailRow(
                       label: 'Latitude',
                       value: alert.latitude.toStringAsFixed(6),
                     ),
@@ -661,6 +762,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ),
               const SizedBox(height: 10),
               Text('Gravite : ${alert.severity}'),
+              const SizedBox(height: 6),
+              Text(
+                _formatLocationReference(alert),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _formatDistanceFromCurrent(alert),
+                style: const TextStyle(color: Colors.black54),
+              ),
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -906,6 +1017,24 @@ class AlertsMapScreen extends StatefulWidget {
 class _AlertsMapScreenState extends State<AlertsMapScreen> {
   GoogleMapController? mapController;
 
+  String _formatLocationReference(RoadReport alert) {
+    final label = alert.locationLabel?.trim();
+    final address = alert.locationAddress?.trim();
+    if (label != null &&
+        label.isNotEmpty &&
+        address != null &&
+        address.isNotEmpty) {
+      return 'Pres de $label - $address';
+    }
+    if (label != null && label.isNotEmpty) {
+      return 'Pres de $label';
+    }
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    return 'Reference non renseignee';
+  }
+
   LatLngBounds get _bounds {
     final latitudes = widget.alerts.map((alert) => alert.latitude).toList();
     final longitudes = widget.alerts.map((alert) => alert.longitude).toList();
@@ -949,8 +1078,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
         icon: BitmapDescriptor.defaultMarkerWithHue(color),
         infoWindow: InfoWindow(
           title: '${widget.formatType(alert.type)} - $statusLabel',
-          snippet:
-              '${alert.severity} | +${alert.confirmationCount} / -${alert.refutationCount}',
+          snippet: _formatLocationReference(alert),
           onTap: () => _showMapAlertDetails(alert),
         ),
         onTap: () => _showMapAlertDetails(alert),
@@ -1020,6 +1148,10 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
               ),
               const SizedBox(height: 14),
               _MapDetailRow(label: 'Gravite', value: alert.severity),
+              _MapDetailRow(
+                label: 'Reference',
+                value: _formatLocationReference(alert),
+              ),
               _MapDetailRow(
                 label: 'Date',
                 value: widget.formatDate(alert.createdAt),
