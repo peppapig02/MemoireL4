@@ -8,6 +8,7 @@ import 'package:botroad/controllers/routes_controller.dart';
 import 'package:botroad/controllers/trending_locations_controller.dart';
 import 'package:botroad/controllers/user_controller.dart';
 import 'package:botroad/firebase_options.dart';
+import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/crypt/cryptService.dart';
 
 import 'package:get/get.dart';
@@ -73,11 +74,23 @@ class Setting {
     String msg, [
     Color color = Colors.white,
   ]) {
+    final isError = color == Colors.red || color == AppColors.error;
     Get.snackbar(
       title,
       msg,
       snackPosition: SnackPosition.BOTTOM,
-      colorText: color,
+      backgroundColor: AppColors.surface,
+      colorText: AppColors.textPrimary,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 16,
+      duration: const Duration(seconds: 3),
+      animationDuration: const Duration(milliseconds: 200),
+      forwardAnimationCurve: Curves.easeOutCubic,
+      reverseAnimationCurve: Curves.easeIn,
+      icon: Icon(
+        isError ? Icons.error_outline : Icons.check_circle_outline,
+        color: isError ? AppColors.error : AppColors.success,
+      ),
     );
   }
 

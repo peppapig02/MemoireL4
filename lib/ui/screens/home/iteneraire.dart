@@ -40,8 +40,9 @@ const String _botRoadMapStyle = '''
 
 class Iteneraire extends StatefulWidget {
   final RoutesModel? route;
+  final bool embedded;
 
-  const Iteneraire({super.key, this.route});
+  const Iteneraire({super.key, this.route, this.embedded = false});
 
   @override
   State<Iteneraire> createState() => _IteneraireState();
@@ -1006,12 +1007,7 @@ class _IteneraireState extends State<Iteneraire> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        leading: const BackButton(color: AppColors.textPrimary),
-      ),
-      body:
+    final body =
           isMapInitializing
               ? const Column(
                 children: [
@@ -1039,7 +1035,7 @@ class _IteneraireState extends State<Iteneraire> {
               )
               : Column(
                 children: [
-                  const NetworkStatusBanner(),
+                  if (!widget.embedded) const NetworkStatusBanner(),
                   Expanded(
                     child: SizedBox(
                       height: height,
@@ -1077,15 +1073,17 @@ class _IteneraireState extends State<Iteneraire> {
                             markers: markers,
                             polylines: polylines,
                             myLocationEnabled: currentPosition != null,
-                            myLocationButtonEnabled: true,
-                            zoomControlsEnabled: true,
+                            myLocationButtonEnabled: !widget.embedded,
+                            zoomControlsEnabled: !widget.embedded,
                             zoomGesturesEnabled: true,
                             scrollGesturesEnabled: true,
                             rotateGesturesEnabled: true,
                             tiltGesturesEnabled: true,
                             mapToolbarEnabled: false,
                             mapType: MapType.normal,
-                            padding: EdgeInsets.only(bottom: height * 0.24),
+                            padding: EdgeInsets.only(
+                              bottom: widget.embedded ? height * 0.32 : height * 0.24,
+                            ),
                           ),
                           Positioned(
                             right: 16,
@@ -1188,7 +1186,16 @@ class _IteneraireState extends State<Iteneraire> {
                     ),
                   ),
                 ],
-              ),
+              );
+
+    if (widget.embedded) return body;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        leading: const BackButton(color: AppColors.textPrimary),
+      ),
+      body: body,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:botroad/bd/columns.dart';
 import 'package:botroad/controllers/conversations_controller.dart';
+import 'package:botroad/controllers/home_controller.dart';
 import 'package:botroad/controllers/messages_controller.dart';
 import 'package:botroad/core/config/app_secrets.dart';
 import 'package:botroad/core/services/chat_intent_service.dart';
@@ -7,7 +8,6 @@ import 'package:botroad/core/services/chat_navigation_service.dart';
 import 'package:botroad/core/services/geocoding_service.dart';
 import 'package:botroad/core/services/location_service.dart';
 import 'package:botroad/core/services/nearby_places_service.dart';
-import 'package:botroad/core/services/network_status_service.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
@@ -22,16 +22,23 @@ import 'package:botroad/utils/const/colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:botroad/ui/screens/home/iteneraire.dart';
-import 'package:botroad/ui/widgets/network_status_banner.dart';
+import 'package:botroad/ui/animations/app_animations.dart';
+import 'package:botroad/ui/animations/scale_tap.dart';
+import 'package:botroad/ui/animations/streaming_text.dart';
+import 'package:botroad/ui/animations/thinking_dots.dart';
+import 'package:botroad/ui/controllers/active_route_controller.dart';
+import 'package:botroad/ui/screens/main/main_nav_controller.dart';
+import 'package:botroad/ui/widgets/v2/assistant_empty_state.dart';
+import 'package:botroad/ui/widgets/v2/route_info_card.dart';
 import 'package:botroad/controllers/locations_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:geolocator/geolocator.dart';
 
 class AIChatScreen extends StatefulWidget {
   final ConversationsModel? conversation;
+  final bool embedded;
 
-  const AIChatScreen({super.key, this.conversation});
+  const AIChatScreen({super.key, this.conversation, this.embedded = false});
 
   @override
   State<AIChatScreen> createState() => _AIChatScreenState();
@@ -40,6 +47,7 @@ class AIChatScreen extends StatefulWidget {
 class _AIChatScreenState extends State<AIChatScreen> {
   final MessagesController messagesCtrl = Setting.messagesCtrl;
   final ConversationsController conversationsCtrl = Setting.conversationsCtrl;
+  final HomeController homeCtrl = Setting.homeCtrl;
   final TextEditingController messageController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -48,7 +56,6 @@ class _AIChatScreenState extends State<AIChatScreen> {
   bool isSearching = false;
   bool isLoadingMore = false;
   bool hasMoreMessages = true;
-  bool _didShowMessagesStreamError = false;
   String searchQuery = '';
   GeminiService? geminiService;
   ConversationsModel? conversations;
@@ -62,22 +69,24 @@ class _AIChatScreenState extends State<AIChatScreen> {
   late final LocationService locationService;
   late final ChatNavigationService chatNavigationService;
   late final NearbyPlacesService nearbyPlacesService;
-  late final NetworkStatusService networkStatusService;
   late final RoadReportService roadReportService;
   late final RouteRiskService routeRiskService;
   late final RoutingService routingService;
   late final TripHistoryService tripHistoryService;
   Position? currentPosition;
-  RoutesModel? lastRoute;
+  bool _showEmptyChrome = true;
+  String? _latestBotStreamKey;
 
   @override
   void initState() {
     super.initState();
     conversations = widget.conversation;
-    initAiServices();
+    if (widget.conversation?.key != null) {
+      _showEmptyChrome = false;
+    }
+    initGeminiService();
     _setupScrollListener();
     _getCurrentLocation();
-    _loadLatestRoute();
   }
 
   void _setupScrollListener() {
@@ -89,7 +98,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     });
   }
 
-  void initAiServices() {
+  void initGeminiService() {
     geminiService = GeminiService();
     locationService = LocationService();
     chatNavigationService = ChatNavigationService(
@@ -100,13 +109,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
     nearbyPlacesService = NearbyPlacesService(
       apiKey: AppSecrets.googleMapsApiKey,
     );
-    networkStatusService =
-        Get.isRegistered<NetworkStatusService>()
-            ? Get.find<NetworkStatusService>()
-            : Get.put(NetworkStatusService(), permanent: true);
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
-    routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
+    routingService = RoutingService(
+      googleApiKey: AppSecrets.googleMapsApiKey,
+    );
     tripHistoryService = TripHistoryService(collection: Setting.fTripHistory);
   }
 
@@ -120,69 +127,37 @@ class _AIChatScreenState extends State<AIChatScreen> {
     }
   }
 
+  void _startNewConversation() {
+    setState(() {
+      conversations = null;
+      loadedMessages = [];
+      conversationMemory.clear();
+      lastDocument = null;
+      hasMoreMessages = true;
+      _showEmptyChrome = true;
+      _latestBotStreamKey = null;
+      isSearching = false;
+      isTyping = false;
+      isLoading = false;
+      searchQuery = '';
+      messageController.clear();
+      searchController.clear();
+    });
+  }
+
+  Widget _buildNewConversationButton() {
+    return IconButton(
+      icon: const Icon(Icons.add_comment_outlined),
+      tooltip: 'chat_new_conversation'.tr,
+      onPressed: _startNewConversation,
+    );
+  }
+
   void _updateConversationMemory(String sender, String content) {
     conversationMemory.insert(0, {'sender': sender, 'content': content});
     if (conversationMemory.length > maxMemorySize) {
       conversationMemory.removeLast();
     }
-  }
-
-  bool _isNetworkError(Object error) {
-    final normalized = error.toString().toLowerCase();
-    return normalized.contains('unable to resolve host') ||
-        normalized.contains('unknownhostexception') ||
-        normalized.contains('socketexception') ||
-        normalized.contains('failed to resolve name') ||
-        normalized.contains('network is unreachable') ||
-        normalized.contains('status{code=unavailable') ||
-        normalized.contains('code=unavailable') ||
-        normalized.contains('end of stream or ioexception') ||
-        normalized.contains('ioexception') ||
-        normalized.contains('broken pipe');
-  }
-
-  String _toFriendlyErrorMessage(Object error) {
-    if (_isNetworkError(error)) {
-      networkStatusService.markOffline();
-      return 'chat_network_error_message'.tr;
-    }
-
-    return error
-        .toString()
-        .replaceFirst('Exception: Error generating response: ', '')
-        .replaceFirst('Exception: Error generating Gemini response: ', '')
-        .replaceFirst('Exception: ', '');
-  }
-
-  void _showErrorSnackBar(String message) {
-    Get.snackbar(
-      'chat_send_error_title'.tr,
-      message,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-    );
-  }
-
-  Future<void> _loadLatestRoute() async {
-    final userId = Setting.userCtrl.user.value.key;
-    if (userId == null) {
-      return;
-    }
-
-    final routes = await routesCtrl.getRoutesOfUser(userId);
-    if (!mounted || routes == null || routes.isEmpty) {
-      return;
-    }
-
-    routes.sort((a, b) {
-      final aDate = DateTime.tryParse(a.date_create ?? '') ?? DateTime(1970);
-      final bDate = DateTime.tryParse(b.date_create ?? '') ?? DateTime(1970);
-      return bDate.compareTo(aDate);
-    });
-
-    setState(() {
-      lastRoute = routes.first;
-    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -236,10 +211,8 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
       // Rechercher les lieux
       final depart = response['depart'] as String;
       final arrivee = response['arrivee'] as String;
-      final etapes = _sanitizeEtapes(
-        (response['etapes'] as List<dynamic>?)?.cast<String>() ?? [],
-        arrivee,
-      );
+      final etapes =
+          (response['etapes'] as List<dynamic>?)?.cast<String>() ?? [];
 
       printDebug("depart : $depart");
       printDebug("arrivee : $arrivee");
@@ -251,36 +224,17 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
                 'latitude': currentPosition!.latitude,
                 'longitude': currentPosition!.longitude,
               }
-              : await locationsCtrl.searchPlace(
-                depart,
-                biasLatitude: currentPosition?.latitude,
-                biasLongitude: currentPosition?.longitude,
-              );
+              : await locationsCtrl.searchPlace(depart);
       printDebug("departPlace : $departPlace");
 
       // Rechercher le lieu d'arrivée
-      var arriveePlace = await locationsCtrl.searchPlace(
-        arrivee,
-        biasLatitude:
-            (departPlace?['latitude'] as double?) ?? currentPosition?.latitude,
-        biasLongitude:
-            (departPlace?['longitude'] as double?) ??
-            currentPosition?.longitude,
-      );
+      var arriveePlace = await locationsCtrl.searchPlace(arrivee);
       printDebug("arriveePlace : $arriveePlace");
 
       // Rechercher les étapes
       List<Map<String, dynamic>> etapesPlaces = [];
       for (var etape in etapes) {
-        var place = await locationsCtrl.searchPlace(
-          etape,
-          biasLatitude:
-              (departPlace?['latitude'] as double?) ??
-              currentPosition?.latitude,
-          biasLongitude:
-              (departPlace?['longitude'] as double?) ??
-              currentPosition?.longitude,
-        );
+        var place = await locationsCtrl.searchPlace(etape);
         if (place != null) {
           etapesPlaces.add(place);
         }
@@ -300,18 +254,28 @@ ${conversationMemory.map((msg) => "${msg['sender']}: ${msg['content']}").join('\
         );
 
         if (route != null) {
-          // Naviguer vers la page d'itinéraire
-          setState(() {
-            lastRoute = route;
-          });
-          Get.to(() => Iteneraire(route: route));
+          final distance = estimateDistanceFromPoints(route.points);
+          final duration = estimateDurationFromDistance(distance);
+          final card = routeCardFromResult(
+            route: route,
+            departure: depart,
+            destination: arrivee,
+            distanceKm: distance,
+            durationMin: duration,
+            warningCount: route.warnings?.length ?? 0,
+          );
+          final botText =
+              'Itinéraire de $depart vers $arrivee · ${distance.toStringAsFixed(1)} km · ${duration.toStringAsFixed(0)} min';
+          final messageId = await _saveBotMessage(conversationId, botText);
+          Get.put(ActiveRouteController(), permanent: true);
+          Get.find<ActiveRouteController>().setActiveRoute(
+            route,
+            cardInfo: card,
+            messageId: messageId,
+          );
+          switchMainTab(1);
           return;
         }
-        await _saveBotMessage(
-          conversationId,
-          "J'ai bien compris votre trajet et retrouve les lieux, mais l'affichage automatique de l'itineraire ne fonctionne pas encore correctement sur le web. Essayez sur Android pour la carte complete, ou reformulez sans etapes intermediaires.",
-        );
-        return;
       }
 
       // Si quelque chose n'a pas fonctionné, demander à l'IA d'expliquer le problème
@@ -330,33 +294,25 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       );
 
       if (errorResponse != null) {
-        final botMessage = MessagesModel(
+        messagesCtrl.messages.value = MessagesModel(
           id_conversation: conversationId,
           sender: 'bot',
           content: errorResponse['message'] as String,
           date_create: DateTime.now().toString(),
         );
-        messagesCtrl.messages.value = botMessage;
-        final messageId = await messagesCtrl.addMessages();
-        if (messageId == null) {
-          _cacheMessageLocally(botMessage);
-        }
+        await messagesCtrl.addMessages();
         _updateConversationMemory('bot', errorResponse['message'] as String);
       }
     } else {
       // Si ce n'est pas une réponse structurée, l'afficher normalement
       final message = response['message'] as String;
-      final botMessage = MessagesModel(
+      messagesCtrl.messages.value = MessagesModel(
         id_conversation: conversationId,
         sender: 'bot',
         content: message,
         date_create: DateTime.now().toString(),
       );
-      messagesCtrl.messages.value = botMessage;
-      final messageId = await messagesCtrl.addMessages();
-      if (messageId == null) {
-        _cacheMessageLocally(botMessage);
-      }
+      await messagesCtrl.addMessages();
       _updateConversationMemory('bot', message);
     }
   }
@@ -375,32 +331,18 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       if (request.intent == ChatIntentService.calculateRouteIntent &&
           navigationResult.isReadyForRouting) {
-        final routeMode = _detectRouteMode(content);
-        final rawRouteResult =
-            routeMode == 'fast'
-                ? await routingService.calculateRoute(
-                  userId: Setting.userCtrl.user.value.key,
-                  startLat: request.startLat!,
-                  startLng: request.startLng!,
-                  destinationLat: request.destinationLat!,
-                  destinationLng: request.destinationLng!,
-                  startLabel: request.startText,
-                  destinationLabel: request.destinationText,
-                )
-                : await _calculateBestRouteForMode(
-                  mode: routeMode,
-                  startLat: request.startLat!,
-                  startLng: request.startLng!,
-                  destinationLat: request.destinationLat!,
-                  destinationLng: request.destinationLng!,
-                  startLabel: request.startText,
-                  destinationLabel: request.destinationText,
-                );
+        final rawRouteResult = await routingService.calculateRoute(
+          userId: Setting.userCtrl.user.value.key,
+          startLat: request.startLat!,
+          startLng: request.startLng!,
+          destinationLat: request.destinationLat!,
+          destinationLng: request.destinationLng!,
+          startLabel: request.startText,
+          destinationLabel: request.destinationText,
+        );
 
         if (rawRouteResult != null) {
-          final routeResult = await routeRiskService.attachWarnings(
-            rawRouteResult,
-          );
+          final routeResult = await routeRiskService.attachWarnings(rawRouteResult);
           final route = await _persistRouteResult(routeResult);
           if (route == null) {
             await _saveBotMessage(
@@ -412,24 +354,37 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
           await _saveTripHistory(content, routeResult);
 
-          final warningText =
-              routeResult.warnings.isNotEmpty
-                  ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
-                  : '';
-          final modeText =
-              routeResult.mode == 'safe'
-                  ? " en mode sûr"
-                  : routeResult.mode == 'balanced'
-                  ? " en mode équilibré"
-                  : "";
+          final warningText = routeResult.warnings.isNotEmpty
+              ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
+              : '';
           final botMessage =
-              "J'ai trouve un itineraire$modeText de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
+              "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
 
-          await _saveBotMessage(conversationId, botMessage);
-          setState(() {
-            lastRoute = route;
-          });
-          Get.to(() => Iteneraire(route: route));
+          final messageId = await _saveBotMessage(conversationId, botMessage);
+          if (messageId != null) {
+            final card = routeCardFromResult(
+              route: route,
+              departure: routeResult.startLabel ??
+                  request.startText ??
+                  'Position actuelle',
+              destination: routeResult.destinationLabel ??
+                  request.destinationText ??
+                  'Destination',
+              distanceKm: routeResult.distance,
+              durationMin: routeResult.duration,
+              warningCount: routeResult.warnings.length,
+            );
+            Get.put(ActiveRouteController(), permanent: true);
+            Get.find<ActiveRouteController>().setActiveRoute(
+              route,
+              cardInfo: card,
+              messageId: messageId,
+            );
+          } else {
+            Get.put(ActiveRouteController(), permanent: true);
+            Get.find<ActiveRouteController>().setActiveRoute(route);
+          }
+          switchMainTab(1);
           return true;
         }
       }
@@ -473,23 +428,22 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = places
-            .map((place) {
-              final distance = place.distance?.toStringAsFixed(1) ?? '?';
-              final rating =
-                  place.rating != null
-                      ? ' - note ${place.rating!.toStringAsFixed(1)}'
-                      : '';
-              return "- ${place.name} ($distance km$rating)";
-            })
-            .join('\n');
+        final lines = places.map((place) {
+          final distance = place.distance?.toStringAsFixed(1) ?? '?';
+          final rating =
+              place.rating != null ? ' - note ${place.rating!.toStringAsFixed(1)}' : '';
+          return "- ${place.name} (${distance} km${rating})";
+        }).join('\n');
 
         final title =
             (request.resultCount ?? 1) > 1
                 ? "Voici les ${places.length} ${request.category} les plus proches :"
                 : "Voici le ${request.category} le plus proche :";
 
-        await _saveBotMessage(conversationId, "$title\n$lines");
+        await _saveBotMessage(
+          conversationId,
+          "$title\n$lines",
+        );
         return true;
       }
 
@@ -516,16 +470,13 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = historyItems
-            .map((item) {
-              final origin = item.originLabel ?? 'Depart inconnu';
-              final destination =
-                  item.destinationLabel ?? 'Destination inconnue';
-              final distance = item.distance.toStringAsFixed(1);
-              final duration = item.duration.toStringAsFixed(0);
-              return "- $origin -> $destination ($distance km, $duration min)";
-            })
-            .join('\n');
+        final lines = historyItems.map((item) {
+          final origin = item.originLabel ?? 'Depart inconnu';
+          final destination = item.destinationLabel ?? 'Destination inconnue';
+          final distance = item.distance.toStringAsFixed(1);
+          final duration = item.duration.toStringAsFixed(0);
+          return "- $origin -> $destination ($distance km, $duration min)";
+        }).join('\n');
 
         await _saveBotMessage(
           conversationId,
@@ -544,18 +495,11 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final locationReference = await nearbyPlacesService
-            .findNearestReference(
-              latitude: currentLocation.latitude,
-              longitude: currentLocation.longitude,
-            );
-        final report = roadReportService.buildReportFromMessage(
+        final report = roadReportService.buildUserReport(
           userId: Setting.userCtrl.user.value.key,
           latitude: currentLocation.latitude,
           longitude: currentLocation.longitude,
-          locationLabel: locationReference?.name,
-          locationAddress: locationReference?.address,
-          message: content,
+          comment: content,
         );
 
         final reportId = await roadReportService.saveRoadReport(report);
@@ -569,9 +513,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
         await _saveBotMessage(
           conversationId,
-          locationReference == null
-              ? "Votre signalement de route a bien ete enregistre. Merci pour votre contribution."
-              : "Votre signalement de route a bien ete enregistre pres de ${locationReference.name}. Merci pour votre contribution.",
+          "Votre signalement de route a bien ete enregistre. Merci pour votre contribution.",
         );
         return true;
       }
@@ -584,9 +526,12 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   }
 
   Future<RoutesModel?> _persistRouteResult(RouteResult routeResult) async {
-    final points = routeResult.geometry
-        .map((point) => '${point['latitude']},${point['longitude']}')
-        .join('|');
+    final points =
+        routeResult.geometry
+            .map(
+              (point) => '${point['latitude']},${point['longitude']}',
+            )
+            .join('|');
 
     final route = RoutesModel(
       id_user: routeResult.userId,
@@ -595,10 +540,6 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       points: points,
       waypoints: const [],
       warnings: routeResult.warnings,
-      segments:
-          routeResult.segments.map((segment) => segment.toJson()).toList(),
-      mode: routeResult.mode,
-      risk_score: routeResult.riskScore,
       date_create: DateTime.now().toString(),
     );
 
@@ -610,76 +551,6 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
     route.key = key;
     return route;
-  }
-
-  Future<RouteResult?> _calculateBestRouteForMode({
-    required String mode,
-    required double startLat,
-    required double startLng,
-    required double destinationLat,
-    required double destinationLng,
-    String? startLabel,
-    String? destinationLabel,
-  }) async {
-    final routes = await routingService.calculateRoutes(
-      userId: Setting.userCtrl.user.value.key,
-      startLat: startLat,
-      startLng: startLng,
-      destinationLat: destinationLat,
-      destinationLng: destinationLng,
-      startLabel: startLabel,
-      destinationLabel: destinationLabel,
-      alternatives: true,
-    );
-
-    if (routes.isEmpty) {
-      return null;
-    }
-
-    final checkedRoutes = await routeRiskService.attachWarningsToRoutes(routes);
-    return routeRiskService.chooseBestRoute(checkedRoutes, mode);
-  }
-
-  String _detectRouteMode(String message) {
-    final normalized = _normalizeForIntent(message);
-    final asksSafeRoute = [
-      'itineraire sur',
-      'route sure',
-      'route securisee',
-      'itineraire securise',
-      'moins dangereux',
-      'eviter les risques',
-      'evite les risques',
-      'sans danger',
-    ].any(normalized.contains);
-    if (asksSafeRoute) {
-      return 'safe';
-    }
-
-    final asksBalancedRoute = [
-      'equilibre',
-      'compromis',
-      'entre rapide et sur',
-      'entre rapidite et securite',
-    ].any(normalized.contains);
-    if (asksBalancedRoute) {
-      return 'balanced';
-    }
-
-    return 'fast';
-  }
-
-  String _normalizeForIntent(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll(RegExp(r'[àáâãäå]'), 'a')
-        .replaceAll(RegExp(r'[èéêë]'), 'e')
-        .replaceAll(RegExp(r'[ìíîï]'), 'i')
-        .replaceAll(RegExp(r'[òóôõö]'), 'o')
-        .replaceAll(RegExp(r'[ùúûü]'), 'u')
-        .replaceAll('ç', 'c')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
   }
 
   Future<void> _saveTripHistory(
@@ -710,92 +581,32 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     }
   }
 
-  List<String> _sanitizeEtapes(List<String> etapes, String arrivee) {
-    final results = <String>[];
-    final seen = <String>{};
-
-    for (final rawEtape in etapes) {
-      final etape = rawEtape.trim();
-      if (etape.isEmpty) continue;
-
-      final normalized = etape.toLowerCase();
-      if (normalized == arrivee.trim().toLowerCase()) continue;
-
-      final looksLikeInstruction = [
-        'tourner',
-        'continuer',
-        'rejoindre',
-        'suivre',
-        'prendre l',
-        'prendre la',
-        'prendre le',
-        'prendre les',
-        'direction du',
-        'direction de',
-        'traversant',
-      ].any(normalized.contains);
-
-      if (looksLikeInstruction) continue;
-      if (seen.add(normalized)) {
-        results.add(etape);
-      }
-    }
-
-    return results;
-  }
-
-  Future<void> _saveBotMessage(String conversationId, String message) async {
-    try {
-      final botMessage = MessagesModel(
-        id_conversation: conversationId,
-        sender: 'bot',
-        content: message,
-        date_create: DateTime.now().toString(),
-      );
-      messagesCtrl.messages.value = botMessage;
-      final messageId = await messagesCtrl.addMessages();
-      if (messageId == null) {
-        _cacheMessageLocally(botMessage);
-      }
-      _updateConversationMemory('bot', message);
-    } catch (e) {
-      _cacheMessageLocally(
-        MessagesModel(
-          id_conversation: conversationId,
-          sender: 'bot',
-          content: message,
-          date_create: DateTime.now().toString(),
-        ),
-      );
-      printDebug("error saveBotMessage ::: $e");
-    }
-  }
-
-  void _cacheMessageLocally(MessagesModel message) {
-    if (!mounted) {
-      return;
-    }
-
-    message.key ??= 'local_${DateTime.now().microsecondsSinceEpoch}';
-    setState(() {
-      loadedMessages.removeWhere((item) => item.key == message.key);
-      loadedMessages.insert(0, message);
-      hasMoreMessages = false;
-    });
+  Future<String?> _saveBotMessage(String conversationId, String message) async {
+    messagesCtrl.messages.value = MessagesModel(
+      id_conversation: conversationId,
+      sender: 'bot',
+      content: message,
+      date_create: DateTime.now().toString(),
+    );
+    final id = await messagesCtrl.addMessages();
+    _updateConversationMemory('bot', message);
+    return id;
   }
 
   Future<void> _sendMessage() async {
     final content = messageController.text.trim();
     if (content.isEmpty) return;
-    String? conversationId = widget.conversation?.key ?? conversations?.key;
 
     messageController.clear();
     setState(() {
       isLoading = true;
       isTyping = true;
+      _showEmptyChrome = false;
     });
 
     try {
+      String? conversationId = widget.conversation?.key ?? conversations?.key;
+
       // Si pas de conversation, en créer une nouvelle
       if (conversationId == null) {
         conversationsCtrl.conversations.value = ConversationsModel(
@@ -806,53 +617,28 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         conversationId = await conversationsCtrl.addConversations();
 
         if (conversationId == null) {
-          conversationId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-          conversations = ConversationsModel(
-            key: conversationId,
-            id_user: Setting.userCtrl.user.value.key,
-            libelle:
-                content.length > 30
-                    ? '${content.substring(0, 30)}...'
-                    : content,
-          );
-          networkStatusService.markOffline();
-        } else {
-          conversations = await Setting.conversationsCtrl.getOneConversations(
-            conversationId,
-          );
-          if (conversations?.key == null) {
-            conversations = ConversationsModel(
-              key: conversationId,
-              id_user: Setting.userCtrl.user.value.key,
-              libelle:
-                  content.length > 30
-                      ? '${content.substring(0, 30)}...'
-                      : content,
-            );
-          }
+          throw Exception('Failed to create conversation');
+        }
+        conversations = await Setting.conversationsCtrl.getOneConversations(
+          conversationId,
+        );
+        if (conversations?.key == null) {
+          throw Exception('Failed to get conversation');
         }
       }
 
       // Sauvegarder le message de l'utilisateur
-      final userMessage = MessagesModel(
+      messagesCtrl.messages.value = MessagesModel(
         id_conversation: conversationId,
         sender: 'user',
         content: content,
         date_create: DateTime.now().toString(),
       );
-      messagesCtrl.messages.value = userMessage;
-      final userMessageId = await messagesCtrl.addMessages();
-      if (userMessageId == null) {
-        _cacheMessageLocally(userMessage);
-      }
+      await messagesCtrl.addMessages();
       _updateConversationMemory('user', content);
 
-      final handledByMvp = await _tryHandleMvpNavigation(
-        content,
-        conversationId,
-      );
+      final handledByMvp = await _tryHandleMvpNavigation(content, conversationId);
       if (handledByMvp) {
-        networkStatusService.markOnline();
         _scrollToBottom();
         return;
       }
@@ -868,23 +654,25 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         await _handleStructuredResponse(response, conversationId);
       }
 
-      networkStatusService.markOnline();
       _scrollToBottom();
     } catch (e) {
-      final friendlyError = _toFriendlyErrorMessage(e);
-
-      if (conversationId != null) {
-        await _saveBotMessage(conversationId, friendlyError);
-      }
-
-      _showErrorSnackBar(
-        'chat_send_error_body'.trParams({'error': friendlyError}),
+      Get.snackbar(
+        'chat_send_error_title'.tr,
+        'chat_send_error_body'.trParams({'error': '$e'}),
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
       );
       printDebug("error sendMessage ::: $e");
     } finally {
       setState(() {
         isLoading = false;
         isTyping = false;
+        if (loadedMessages.isNotEmpty) {
+          final latestBot = loadedMessages
+              .where((m) => m.sender == 'bot')
+              .firstOrNull;
+          _latestBotStreamKey = latestBot?.key;
+        }
       });
     }
   }
@@ -934,10 +722,6 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         hasMoreMessages = snapshot.docs.length == messagesPerPage;
       });
     } catch (e) {
-      if (_isNetworkError(e)) {
-        networkStatusService.markOffline();
-        _showErrorSnackBar('chat_history_network_error'.tr);
-      }
       printDebug("Error loading more messages: $e");
     } finally {
       setState(() {
@@ -1005,40 +789,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   }
 
   Widget _buildTypingIndicator() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.12),
-            blurRadius: 20,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'chat_typing'.tr,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ],
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: const ThinkingDots(),
       ),
     );
   }
@@ -1054,43 +815,177 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(conversations?.libelle ?? 'chat_new_conversation'.tr),
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.textPrimary,
-        actions: [
-          if (lastRoute?.points?.trim().isNotEmpty == true)
-            IconButton(
-              tooltip: 'Reouvrir la carte',
-              icon: const Icon(Icons.map_outlined),
-              onPressed: () {
-                Get.to(() => Iteneraire(route: lastRoute));
-              },
+  Widget _buildMessageItem(
+    BuildContext context,
+    List<MessagesModel> messages,
+    int index,
+    ActiveRouteController? routeCtrl,
+  ) {
+    if (isTyping && index == 0) {
+      return _buildTypingIndicator();
+    }
+
+    if (hasMoreMessages &&
+        index == messages.length + (isTyping ? 1 : 0) &&
+        messages.isNotEmpty) {
+      return _buildLoadMoreIndicator();
+    }
+
+    final message = messages[isTyping ? index - 1 : index];
+    final isUser = message.sender == 'user';
+    final routeCard = !isUser && routeCtrl != null
+        ? routeCtrl.cardForMessage(message.key)
+        : null;
+
+    if (routeCard != null) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: RouteInfoCard(info: routeCard),
+      );
+    }
+
+    final key = message.key ?? '$index';
+
+    final bubble = Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isUser ? AppColors.primary : AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: isUser
+            ? null
+            : Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        boxShadow: isUser
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 16,
+                ),
+              ]
+            : null,
+      ),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.75,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          isUser
+              ? Text(
+                  message.content ?? '',
+                  style: const TextStyle(color: Colors.white),
+                )
+              : StreamingText(
+                  text: message.content ?? '',
+                  animate: message.key == _latestBotStreamKey,
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+          const SizedBox(height: 4),
+          Text(
+            message.date_create != null
+                ? DateTime.parse(message.date_create!)
+                    .toLocal()
+                    .toString()
+                    .substring(0, 16)
+                : '',
+            style: TextStyle(
+              fontSize: 10,
+              color: isUser
+                  ? Colors.white.withValues(alpha: 0.7)
+                  : AppColors.textMuted,
             ),
-          IconButton(
-            icon: Icon(isSearching ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() {
-                isSearching = !isSearching;
-                if (!isSearching) {
-                  searchQuery = '';
-                  searchController.clear();
-                }
-              });
-            },
           ),
         ],
       ),
+    );
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: TweenAnimationBuilder<double>(
+        key: ValueKey(key),
+        duration: AppAnimations.normal,
+        curve: AppAnimations.ease,
+        tween: Tween(begin: 0, end: 1),
+        builder: (context, value, child) {
+          return Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 8 * (1 - value)),
+              child: child,
+            ),
+          );
+        },
+        child: bubble,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final routeCtrl = Get.isRegistered<ActiveRouteController>()
+        ? Get.find<ActiveRouteController>()
+        : null;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              automaticallyImplyLeading: true,
+              title: Text(
+                conversations?.libelle ?? 'chat_new_conversation'.tr,
+              ),
+              actions: [
+                _buildNewConversationButton(),
+                IconButton(
+                  icon: Icon(isSearching ? Icons.close : Icons.search),
+                  onPressed: () {
+                    setState(() {
+                      isSearching = !isSearching;
+                      if (!isSearching) {
+                        searchQuery = '';
+                        searchController.clear();
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
       body: Column(
         children: [
-          const NetworkStatusBanner(),
+          if (widget.embedded && !isSearching)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+              child: Row(
+                children: [
+                  Text(
+                    'Assistant',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                  const Spacer(),
+                  _buildNewConversationButton(),
+                  IconButton(
+                    icon: Icon(isSearching ? Icons.close : Icons.search),
+                    onPressed: () {
+                      setState(() {
+                        isSearching = !isSearching;
+                        if (!isSearching) {
+                          searchQuery = '';
+                          searchController.clear();
+                        }
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           if (isSearching)
             Container(
-              padding: const EdgeInsets.all(12),
-              color: AppColors.backgroundSecondary,
+              padding: const EdgeInsets.all(8),
+              color: AppColors.surface,
               child: TextField(
                 controller: searchController,
                 decoration: InputDecoration(
@@ -1109,7 +1004,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                           )
                           : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
                 onChanged: (value) {
@@ -1124,239 +1019,122 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               stream: _getMessagesStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  final friendlyError = _toFriendlyErrorMessage(
-                    snapshot.error!,
+                  return Center(
+                    child: Text(
+                      'chat_error_prefix'.trParams({
+                        'error': '${snapshot.error}',
+                      }),
+                    ),
                   );
-                  networkStatusService.markOffline();
-                  if (!_didShowMessagesStreamError) {
-                    _didShowMessagesStreamError = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        _showErrorSnackBar(
-                          'chat_send_error_body'.trParams({
-                            'error': friendlyError,
-                          }),
-                        );
-                      }
-                    });
-                  }
-                  if (loadedMessages.isEmpty) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          'chat_error_prefix'.trParams({
-                            'error': friendlyError,
-                          }),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-                } else {
-                  networkStatusService.markOnline();
-                  _didShowMessagesStreamError = false;
                 }
                 // printDebug(
                 //   "snapshot.hasData: ${snapshot.hasData} et snapshot.connectionState: ${snapshot.connectionState}",
                 // );
 
-                if (!snapshot.hasData && loadedMessages.isEmpty) {
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 final messages = loadedMessages;
+                final isEmpty = messages.isEmpty && !isTyping;
 
-                return ListView.builder(
-                  reverse: true,
-                  controller: scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount:
-                      messages.length +
-                      (isTyping ? 1 : 0) +
-                      (hasMoreMessages ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (isTyping && index == 0) {
-                      return _buildTypingIndicator();
-                    }
-
-                    if (hasMoreMessages &&
-                        index == messages.length + (isTyping ? 1 : 0) &&
-                        messages.isNotEmpty) {
-                      return _buildLoadMoreIndicator();
-                    }
-                    if (messages.isEmpty) {
-                      return Center(child: Text('chat_no_message_found'.tr));
-                    }
-
-                    final message = messages[isTyping ? index - 1 : index];
-                    final isUser = message.sender == 'user';
-
-                    return Align(
-                      alignment:
-                          isUser ? Alignment.centerRight : Alignment.centerLeft,
-                      child: InkWell(
-                        onDoubleTap: () {
-                          showModalBottomSheet(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return Container(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      'chat_resend_message'.tr,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Text(
-                                      (message.content ?? '').length > 50
-                                          ? '${(message.content ?? '').substring(0, 50)}...'
-                                          : message.content ?? '',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        TextButton(
-                                          onPressed: () {
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('chat_no'.tr),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            // Renvoyer le message
-                                            if (message.content != null) {
-                                              // sendMessage(message.content!);
-                                              messageController.text =
-                                                  message.content!;
-                                              _sendMessage();
-                                            }
-                                            Navigator.pop(context);
-                                          },
-                                          child: Text('chat_yes'.tr),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                return Stack(
+                  children: [
+                    if (!isEmpty)
+                      ListView.builder(
+                        reverse: true,
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount:
+                            messages.length +
+                            (isTyping ? 1 : 0) +
+                            (hasMoreMessages ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          return _buildMessageItem(
+                            context,
+                            messages,
+                            index,
+                            routeCtrl,
                           );
                         },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color:
-                                isUser ? AppColors.primary : AppColors.surface,
-                            borderRadius: BorderRadius.circular(22),
-                            border:
-                                isUser
-                                    ? null
-                                    : Border.all(color: AppColors.divider),
-                            boxShadow:
-                                isUser
-                                    ? [
-                                      BoxShadow(
-                                        color: AppColors.primary.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        blurRadius: 20,
-                                      ),
-                                    ]
-                                    : null,
-                          ),
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                message.content ?? '',
-                                style: TextStyle(
-                                  color:
-                                      isUser
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                message.date_create != null
-                                    ? DateTime.parse(
-                                      message.date_create!,
-                                    ).toLocal().toString().substring(0, 16)
-                                    : '',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color:
-                                      isUser
-                                          ? Colors.white.withValues(alpha: 0.7)
-                                          : AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
-                    );
-                  },
+                    if (isEmpty || _showEmptyChrome)
+                      AssistantEmptyState(
+                        visible: _showEmptyChrome && isEmpty,
+                        onSuggestionTap: (text) {
+                          messageController.text = text;
+                          _sendMessage();
+                        },
+                      ),
+                  ],
                 );
               },
             ),
           ),
           if (isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
+            const SizedBox.shrink(),
           Container(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
-            decoration: BoxDecoration(
-              color: AppColors.backgroundSecondary,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 30,
-                  offset: const Offset(0, -8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: messageController,
-                    decoration: InputDecoration(
-                      hintText: 'chat_write_message'.tr,
-                      border: InputBorder.none,
-                      filled: true,
-                      fillColor: AppColors.surfaceElevated,
-                    ),
-                    style: const TextStyle(color: AppColors.textPrimary),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 100 : 12),
+            decoration: const BoxDecoration(color: AppColors.background),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.mic_none_rounded),
+                    color: AppColors.textMuted,
+                    onPressed: () {
+                      Get.snackbar(
+                        'Microphone',
+                        'Fonctionnalité vocale bientôt disponible',
+                        backgroundColor: AppColors.surface,
+                        colorText: AppColors.textPrimary,
+                      );
+                    },
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                  color: AppColors.primary,
-                ),
-              ],
+                  Expanded(
+                    child: TextField(
+                      controller: messageController,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'chat_write_message'.tr,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  ScaleTap(
+                    onTap: isLoading ? null : _sendMessage,
+                    child: Container(
+                      margin: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.send, size: 20, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

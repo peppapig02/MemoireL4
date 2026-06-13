@@ -1,6 +1,8 @@
+import 'package:botroad/controllers/user_controller.dart';
+import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/ui/screens/auth/pages/login.dart';
 import 'package:botroad/ui/screens/auth/pages/register.dart';
-import 'package:botroad/ui/screens/home/home.dart';
+import 'package:botroad/ui/screens/main/main_shell.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/const/images.dart';
@@ -14,8 +16,21 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   bool isLoading = false;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -146,25 +161,31 @@ class _AuthScreenState extends State<AuthScreen> {
               Container(
                 height: height / 2.2,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  gradient: const LinearGradient(
-                    colors: [AppColors.background, AppColors.surface],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
+                  color: AppColors.background,
                   image: DecorationImage(
                     image: AssetImage(Assets.grateciels),
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.bottomCenter,
-                    opacity: 0.22,
+                    opacity: 0.15,
                   ),
                 ),
                 child: Center(
-                  child: Image.asset(
-                    Assets.logo_en_gris,
-                    width: width / 3,
-                    height: height / 1.5,
-                    fit: BoxFit.contain,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 40,
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      Assets.logo_white,
+                      width: width / 4,
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -188,7 +209,11 @@ class _AuthScreenState extends State<AuthScreen> {
                                 isLoading = false;
                               });
                               if (success) {
-                                Get.offAll(() => const HomeScreen());
+                                Get.offAll(
+                                  () => const MainShell(),
+                                  transition: Transition.fadeIn,
+                                  duration: AppAnimations.medium,
+                                );
                               } else {
                                 Setting.showMessage(
                                   'login_error'.tr,
@@ -208,8 +233,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                       SizedBox(height: height / 50),
                       Text(
-                        'auth_version'.trParams({'version': Setting.version}),
-                        style: const TextStyle(color: AppColors.textMuted),
+                        'auth_version'.trParams({
+                          'version': Setting.version,
+                        }),
                       ),
                     ],
                   ),
@@ -225,49 +251,41 @@ class _AuthScreenState extends State<AuthScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.divider),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.25),
                     blurRadius: 30,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    blurRadius: 28,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  mainAxisSize:
-                      MainAxisSize
-                          .min, // C’est ça qui permet d’adapter la hauteur
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     TabBar(
+                      controller: _tabController,
                       indicatorColor: AppColors.primary,
                       labelColor: AppColors.textPrimary,
                       unselectedLabelColor: AppColors.textMuted,
-                      dividerColor: AppColors.divider,
+                      dividerColor: Colors.white.withValues(alpha: 0.05),
                       labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                       tabs: [
                         Tab(text: 'auth_login_tab'.tr),
                         Tab(text: 'auth_register_tab'.tr),
                       ],
                     ),
-
                     SizedBox(
-                      // donne une hauteur fixe suffisante pour les deux formulaires
                       height: height / 2.4,
                       child: TabBarView(
+                        controller: _tabController,
+                        physics: const PageScrollPhysics(),
                         children: const [LoginScreen(), RegisterScreen()],
                       ),
                     ),
                   ],
                 ),
-              ),
             ),
           ),
         ],

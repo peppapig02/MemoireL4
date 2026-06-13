@@ -1,4 +1,5 @@
-import 'package:botroad/ui/screens/home/home.dart';
+import 'package:botroad/ui/animations/app_animations.dart';
+import 'package:botroad/ui/screens/main/main_shell.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/textfield.dart';
 import 'package:botroad/utils/Setting.dart';
@@ -71,7 +72,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      Get.offAll(() => const HomeScreen());
+      Get.offAll(
+        () => const MainShell(),
+        transition: Transition.fadeIn,
+        duration: AppAnimations.medium,
+      );
     } else {
       Setting.showMessage(
         'login_error'.tr,
@@ -113,7 +118,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Obx(
               () => Boutton(
                 text: 'login_submit'.tr,
-                onPressed: _userCtrl.loading.value ? () {} : _handleLogin,
+                isLoading: _userCtrl.loading.value,
+                onPressed: _userCtrl.loading.value ? null : _handleLogin,
               ),
             ),
           ],
