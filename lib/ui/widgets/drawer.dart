@@ -22,10 +22,10 @@ class DrawerCustom extends StatelessWidget {
 
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -71,13 +71,25 @@ class DrawerCustom extends StatelessWidget {
     );
 
     return Drawer(
+      backgroundColor: AppColors.backgroundSecondary,
       shadowColor: Colors.transparent,
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            padding: const EdgeInsets.all(8.0),
-            decoration: const BoxDecoration(color: AppColors.primary),
+            padding: const EdgeInsets.all(18.0),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              border: const Border(
+                bottom: BorderSide(color: AppColors.divider),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  blurRadius: 28,
+                ),
+              ],
+            ),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -85,6 +97,7 @@ class DrawerCustom extends StatelessWidget {
                   CircleAvatar(
                     radius: 40,
                     backgroundImage: AssetImage(Assets.logo_white),
+                    backgroundColor: AppColors.surfaceElevated,
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -100,14 +113,14 @@ class DrawerCustom extends StatelessWidget {
             ),
           ),
           ListTile(
-            leading: const Icon(Icons.home),
+            leading: const Icon(Icons.home, color: AppColors.textSecondary),
             title: Text('drawer_home'.tr),
             onTap: () {
               Navigator.pop(context);
             },
           ),
           ListTile(
-            leading: const Icon(Icons.people),
+            leading: const Icon(Icons.people, color: AppColors.textSecondary),
             title: Text('drawer_profile'.tr),
             onTap: () {
               Navigator.pop(context);
@@ -118,7 +131,7 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.history),
+            leading: const Icon(Icons.history, color: AppColors.textSecondary),
             title: Text('drawer_history'.tr),
             onTap: () {
               Navigator.pop(context);
@@ -126,7 +139,10 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.warning_amber_rounded),
+            leading: const Icon(
+              Icons.warning_amber_rounded,
+              color: AppColors.warning,
+            ),
             title: const Text('Alertes route'),
             onTap: () {
               Navigator.pop(context);
@@ -134,7 +150,7 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.route),
+            leading: const Icon(Icons.route, color: AppColors.textSecondary),
             title: const Text('Alertes par trajet'),
             onTap: () {
               Navigator.pop(context);
@@ -142,7 +158,10 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.directions_car),
+            leading: const Icon(
+              Icons.directions_car,
+              color: AppColors.textSecondary,
+            ),
             title: Text('drawer_car'.tr),
             onTap: () {
               Navigator.pop(context);
@@ -150,7 +169,7 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.language),
+            leading: const Icon(Icons.language, color: AppColors.textSecondary),
             title: Text('drawer_language'.tr),
             subtitle: Text(AppTranslations.labelFromCode(currentLanguageCode)),
             onTap: () {
@@ -160,7 +179,7 @@ class DrawerCustom extends StatelessWidget {
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.info),
+            leading: const Icon(Icons.info, color: AppColors.textSecondary),
             title: Text('drawer_about'.tr),
             onTap: () {
               Navigator.pop(context);
@@ -168,10 +187,10 @@ class DrawerCustom extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.logout),
+            leading: const Icon(Icons.logout, color: AppColors.error),
             title: Text(
               'drawer_logout'.tr,
-              style: const TextStyle(color: Colors.red),
+              style: const TextStyle(color: AppColors.error),
             ),
             onTap: () async {
               Navigator.pop(context);

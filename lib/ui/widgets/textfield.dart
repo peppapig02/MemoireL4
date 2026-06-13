@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:botroad/utils/const/colors.dart';
 
 class TextFieldCustum extends StatelessWidget {
   final String? hintText;
@@ -17,9 +18,15 @@ class TextFieldCustum extends StatelessWidget {
       controller: controller,
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Colors.grey),
-        border: OutlineInputBorder(),
+        hintStyle: const TextStyle(color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.surfaceElevated,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppColors.divider),
+        ),
       ),
+      style: const TextStyle(color: AppColors.textPrimary),
       obscureText: obscureText,
     );
   }

@@ -11,12 +11,12 @@ class ConversationWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(16.0),
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
         return Container(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          margin: const EdgeInsets.symmetric(vertical: 6.0),
           alignment:
               message.isUser ? Alignment.centerRight : Alignment.centerLeft,
           child: Container(
@@ -28,8 +28,19 @@ class ConversationWidget extends StatelessWidget {
               vertical: 8.0,
             ),
             decoration: BoxDecoration(
-              color: message.isUser ? AppColors.primary : Colors.grey[200],
-              borderRadius: BorderRadius.circular(12.0),
+              color: message.isUser ? AppColors.primary : AppColors.surface,
+              borderRadius: BorderRadius.circular(20.0),
+              border:
+                  message.isUser ? null : Border.all(color: AppColors.divider),
+              boxShadow:
+                  message.isUser
+                      ? [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                        ),
+                      ]
+                      : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -38,7 +49,8 @@ class ConversationWidget extends StatelessWidget {
                   message.sender,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: message.isUser ? Colors.white : Colors.grey[800],
+                    color:
+                        message.isUser ? Colors.white : AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4.0),

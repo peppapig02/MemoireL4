@@ -147,10 +147,16 @@ class _AuthScreenState extends State<AuthScreen> {
                 height: height / 2.2,
                 decoration: BoxDecoration(
                   color: AppColors.primary,
+                  gradient: const LinearGradient(
+                    colors: [AppColors.background, AppColors.surface],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                   image: DecorationImage(
                     image: AssetImage(Assets.grateciels),
                     fit: BoxFit.fitWidth,
                     alignment: Alignment.bottomCenter,
+                    opacity: 0.22,
                   ),
                 ),
                 child: Center(
@@ -203,6 +209,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       SizedBox(height: height / 50),
                       Text(
                         'auth_version'.trParams({'version': Setting.version}),
+                        style: const TextStyle(color: AppColors.textMuted),
                       ),
                     ],
                   ),
@@ -217,13 +224,18 @@ class _AuthScreenState extends State<AuthScreen> {
               width: width / 1.2,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.divider),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 2,
-                    offset: const Offset(0, -2),
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                  ),
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    blurRadius: 28,
                   ),
                 ],
               ),
@@ -236,9 +248,9 @@ class _AuthScreenState extends State<AuthScreen> {
                   children: [
                     TabBar(
                       indicatorColor: AppColors.primary,
-                      labelColor: Colors.black,
-                      unselectedLabelColor: Colors.grey,
-                      dividerColor: Colors.grey.shade200,
+                      labelColor: AppColors.textPrimary,
+                      unselectedLabelColor: AppColors.textMuted,
+                      dividerColor: AppColors.divider,
                       labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                       tabs: [
                         Tab(text: 'auth_login_tab'.tr),

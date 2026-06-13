@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:botroad/utils/const/colors.dart';
 
 class Boutton extends StatelessWidget {
   final String text;
@@ -11,12 +12,19 @@ class Boutton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            vertical: 16,
-          ), // plus besoin de horizontal ici
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shadowColor: AppColors.glow,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
         ),
-        child: Text(text, style: TextStyle(fontWeight: FontWeight.bold)),
+        child: Text(
+          text,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
       ),
     );
   }

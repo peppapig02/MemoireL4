@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:botroad/utils/const/colors.dart';
 
 class MessageInput extends StatelessWidget {
   final TextEditingController controller;
@@ -14,8 +15,8 @@ class MessageInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      color: const Color(0xFFF6F7FB),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+      color: AppColors.background,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -23,8 +24,9 @@ class MessageInput extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               decoration: BoxDecoration(
-                color: const Color(0xFFE9EBF1),
+                color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.divider),
               ),
               child: TextField(
                 controller: controller,
@@ -34,10 +36,11 @@ class MessageInput extends StatelessWidget {
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,
-                  fillColor: const Color(0xFFE9EBF1),
+                  fillColor: AppColors.surfaceElevated,
                   isDense: true,
                   hintText: 'chat_describe_place'.tr,
                 ),
+                style: const TextStyle(color: AppColors.textPrimary),
               ),
             ),
           ),
@@ -47,9 +50,15 @@ class MessageInput extends StatelessWidget {
             child: Container(
               height: 48,
               width: 48,
-              decoration: const BoxDecoration(
-                color: Color(0xFF1F3A53),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
                 shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                  ),
+                ],
               ),
               child: const Icon(Icons.send, color: Colors.white),
             ),

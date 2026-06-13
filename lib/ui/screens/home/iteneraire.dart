@@ -18,6 +18,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+const String _botRoadMapStyle = '''
+[
+  {"elementType":"geometry","stylers":[{"color":"#121218"}]},
+  {"elementType":"labels.text.fill","stylers":[{"color":"#B6B6C5"}]},
+  {"elementType":"labels.text.stroke","stylers":[{"color":"#0B0B0F"}]},
+  {"featureType":"administrative","elementType":"geometry.stroke","stylers":[{"color":"#20202A"}]},
+  {"featureType":"landscape","elementType":"geometry","stylers":[{"color":"#0B0B0F"}]},
+  {"featureType":"poi","elementType":"geometry","stylers":[{"color":"#181820"}]},
+  {"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#808095"}]},
+  {"featureType":"road","elementType":"geometry","stylers":[{"color":"#3A3A4A"}]},
+  {"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#20202A"}]},
+  {"featureType":"road","elementType":"labels.icon","stylers":[{"visibility":"off"}]},
+  {"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#3A3A4A"}]},
+  {"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#20202A"}]},
+  {"featureType":"transit","elementType":"geometry","stylers":[{"color":"#181820"}]},
+  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#101027"}]},
+  {"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#808095"}]}
+]
+''';
+
 class Iteneraire extends StatefulWidget {
   final RoutesModel? route;
 
@@ -206,7 +226,9 @@ class _IteneraireState extends State<Iteneraire> {
           polylineId: const PolylineId('route'),
           points: points,
           color: AppColors.primary,
-          width: 5,
+          width: 6,
+          jointType: JointType.round,
+          geodesic: true,
         ),
       );
 
@@ -235,11 +257,9 @@ class _IteneraireState extends State<Iteneraire> {
             Polyline(
               polylineId: PolylineId('risk_segment_$i'),
               points: [LatLng(startLat, startLng), LatLng(endLat, endLng)],
-              color:
-                  riskLevel == 'high'
-                      ? const Color(0xFFE53935)
-                      : const Color(0xFFFF9800),
-              width: 8,
+              color: riskLevel == 'high' ? AppColors.error : AppColors.warning,
+              width: 7,
+              jointType: JointType.round,
             ),
           );
         }
@@ -502,10 +522,10 @@ class _IteneraireState extends State<Iteneraire> {
       StatefulBuilder(
         builder: (context, setSheetState) {
           return Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(24),
             decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+              color: AppColors.surface,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
             ),
             child: SafeArea(
               child: Column(
@@ -704,10 +724,10 @@ class _IteneraireState extends State<Iteneraire> {
   void _showRouteModeSheet() {
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(24),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: SafeArea(
           child: Column(
@@ -988,8 +1008,8 @@ class _IteneraireState extends State<Iteneraire> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        leading: const BackButton(color: Colors.black),
+        backgroundColor: AppColors.background,
+        leading: const BackButton(color: AppColors.textPrimary),
       ),
       body:
           isMapInitializing
@@ -1031,6 +1051,7 @@ class _IteneraireState extends State<Iteneraire> {
                               target: center,
                               zoom: 12,
                             ),
+                            style: _botRoadMapStyle,
                             onMapCreated: (controller) {
                               mapController = controller;
                               if (bounds != null) {
@@ -1072,7 +1093,8 @@ class _IteneraireState extends State<Iteneraire> {
                             child: FloatingActionButton(
                               heroTag: 'recenter',
                               onPressed: _recenterMap,
-                              backgroundColor: Colors.white,
+                              backgroundColor: AppColors.surfaceElevated,
+                              elevation: 0,
                               child: Icon(
                                 LucideIcons.maximize2,
                                 color: AppColors.primary,
@@ -1096,9 +1118,12 @@ class _IteneraireState extends State<Iteneraire> {
                                     ),
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: AppColors.primary,
-                                elevation: 4,
+                                backgroundColor: AppColors.surfaceElevated,
+                                foregroundColor: AppColors.textPrimary,
+                                elevation: 0,
+                                side: const BorderSide(
+                                  color: AppColors.divider,
+                                ),
                               ),
                             ),
                           ),
@@ -1112,9 +1137,9 @@ class _IteneraireState extends State<Iteneraire> {
                                 isReporting ? 'Envoi...' : 'Signaler',
                               ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE53935),
+                                backgroundColor: AppColors.error,
                                 foregroundColor: Colors.white,
-                                elevation: 4,
+                                elevation: 0,
                               ),
                             ),
                           ),
@@ -1135,7 +1160,8 @@ class _IteneraireState extends State<Iteneraire> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
-                                elevation: 4,
+                                elevation: 0,
+                                shadowColor: AppColors.glow,
                               ),
                             ),
                           ),
@@ -1183,10 +1209,10 @@ class _RouteModeOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(18),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(
           children: [
             Container(
@@ -1194,7 +1220,8 @@ class _RouteModeOption extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.divider),
               ),
               child: Icon(icon, color: AppColors.primary),
             ),
@@ -1207,18 +1234,19 @@ class _RouteModeOption extends StatelessWidget {
                     title,
                     style: const TextStyle(
                       fontSize: 15,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     description,
-                    style: const TextStyle(color: Colors.black54),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted),
           ],
         ),
       ),
@@ -1331,9 +1359,13 @@ class NavigationBottomSheet extends StatelessWidget {
         children: [
           const Text(
             'Instructions de navigation',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: AppColors.textPrimary,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           ...segments.asMap().entries.map((entry) {
             final index = entry.key;
             final segment = entry.value;
@@ -1346,17 +1378,19 @@ class NavigationBottomSheet extends StatelessWidget {
             final isRisky = riskLevel == 'high' || riskLevel == 'medium';
 
             return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(10),
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color:
-                    isRisky ? const Color(0xFFFFF4E5) : const Color(0xFFF8F9FB),
-                borderRadius: BorderRadius.circular(10),
+                    isRisky
+                        ? AppColors.warning.withValues(alpha: 0.12)
+                        : AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color:
                       isRisky
-                          ? const Color(0xFFF4B860)
-                          : const Color(0xFFE5E7EB),
+                          ? AppColors.warning.withValues(alpha: 0.35)
+                          : AppColors.divider,
                 ),
               ),
               child: Row(
@@ -1368,6 +1402,12 @@ class NavigationBottomSheet extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(13),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                        ),
+                      ],
                     ),
                     child: Center(
                       child: Text(
@@ -1389,7 +1429,7 @@ class NavigationBottomSheet extends StatelessWidget {
                           instruction,
                           style: const TextStyle(
                             color: AppColors.textPrimary,
-                            fontSize: 13,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1398,7 +1438,7 @@ class NavigationBottomSheet extends StatelessWidget {
                           Text(
                             distance,
                             style: const TextStyle(
-                              color: Colors.grey,
+                              color: AppColors.textMuted,
                               fontSize: 12,
                             ),
                           ),
@@ -1410,7 +1450,7 @@ class NavigationBottomSheet extends StatelessWidget {
                                 ? 'Zone a risque eleve'
                                 : 'Zone a risque moyen',
                             style: const TextStyle(
-                              color: Color(0xFF8A5200),
+                              color: AppColors.warning,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1433,15 +1473,17 @@ class NavigationBottomSheet extends StatelessWidget {
     final segments = _routeSegments();
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
         ),
+        border: const Border(top: BorderSide(color: AppColors.divider)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.25),
+            blurRadius: 30,
+            offset: const Offset(0, -8),
             spreadRadius: 0,
           ),
         ],
@@ -1450,7 +1492,13 @@ class NavigationBottomSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            color: const Color(0xFFF7F7F7),
+            decoration: const BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+              ),
+            ),
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               children: [
@@ -1459,7 +1507,7 @@ class NavigationBottomSheet extends StatelessWidget {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[400],
+                    color: AppColors.textMuted,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1474,8 +1522,9 @@ class NavigationBottomSheet extends StatelessWidget {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.divider),
                         ),
                         child: Icon(
                           LucideIcons.route,
@@ -1488,7 +1537,8 @@ class NavigationBottomSheet extends StatelessWidget {
                         child: Text(
                           route?.nom ?? 'itinerary_title'.tr,
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
                             fontSize: 16,
                           ),
                         ),
@@ -1499,14 +1549,15 @@ class NavigationBottomSheet extends StatelessWidget {
                           Text(
                             _formatDistance(route?.points),
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w700,
                               fontSize: 16,
                             ),
                           ),
                           Text(
                             _estimateDuration(route?.points),
                             style: const TextStyle(
-                              color: Colors.grey,
+                              color: AppColors.textMuted,
                               fontSize: 14,
                             ),
                           ),
@@ -1531,9 +1582,11 @@ class NavigationBottomSheet extends StatelessWidget {
                         width: double.infinity,
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFF4E5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFF4B860)),
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.35),
+                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1542,14 +1595,14 @@ class NavigationBottomSheet extends StatelessWidget {
                               children: [
                                 const Icon(
                                   Icons.warning_amber_rounded,
-                                  color: Color(0xFFC97A00),
+                                  color: AppColors.warning,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'itinerary_reported_route'.tr,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF8A5200),
+                                    color: AppColors.warning,
                                   ),
                                 ),
                               ],
@@ -1558,7 +1611,7 @@ class NavigationBottomSheet extends StatelessWidget {
                             Text(
                               _buildWarningSummary(route?.warnings),
                               style: const TextStyle(
-                                color: Color(0xFF8A5200),
+                                color: AppColors.textSecondary,
                                 fontSize: 13,
                               ),
                             ),
@@ -1578,10 +1631,14 @@ class NavigationBottomSheet extends StatelessWidget {
             child: ElevatedButton(
               onPressed: onStartNavigation,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isNavigating ? Colors.red : AppColors.primary,
+                backgroundColor:
+                    isNavigating ? AppColors.error : AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shadowColor: AppColors.glow,
                 minimumSize: const Size(double.infinity, 50),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
               child: Text(

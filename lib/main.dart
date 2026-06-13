@@ -10,50 +10,67 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-//joseph
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    const poppinsFontFamily = 'Poppins';
-    final poppinsTextTheme = ThemeData.light(useMaterial3: true).textTheme
-        .apply(fontFamily: poppinsFontFamily)
+    const primaryFontFamily = 'Sora';
+    const fallbackFontFamily = <String>['Inter', 'Poppins'];
+    const baseTextStyle = TextStyle(fontFamilyFallback: fallbackFontFamily);
+
+    final botRoadTextTheme = ThemeData.dark(useMaterial3: true).textTheme
+        .apply(fontFamily: primaryFontFamily)
         .copyWith(
-          displayLarge: const TextStyle(
+          displayLarge: baseTextStyle.copyWith(
             color: AppColors.textPrimary,
             fontSize: 32,
-            fontWeight: FontWeight.bold,
-            fontFamily: poppinsFontFamily,
+            fontWeight: FontWeight.w700,
           ),
-          displayMedium: const TextStyle(
+          displayMedium: baseTextStyle.copyWith(
             color: AppColors.textPrimary,
             fontSize: 28,
-            fontWeight: FontWeight.bold,
-            fontFamily: poppinsFontFamily,
+            fontWeight: FontWeight.w700,
           ),
-          displaySmall: const TextStyle(
+          displaySmall: baseTextStyle.copyWith(
             color: AppColors.textPrimary,
             fontSize: 24,
-            fontWeight: FontWeight.bold,
-            fontFamily: poppinsFontFamily,
+            fontWeight: FontWeight.w700,
           ),
-          headlineMedium: const TextStyle(
+          headlineLarge: baseTextStyle.copyWith(
             color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            fontFamily: poppinsFontFamily,
+            fontSize: 30,
+            fontWeight: FontWeight.w700,
           ),
-          bodyLarge: const TextStyle(
+          headlineMedium: baseTextStyle.copyWith(
+            color: AppColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w600,
+          ),
+          headlineSmall: baseTextStyle.copyWith(
+            color: AppColors.textSecondary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          titleLarge: baseTextStyle.copyWith(
+            color: AppColors.textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          bodyLarge: baseTextStyle.copyWith(
             color: AppColors.textPrimary,
             fontSize: 16,
-            fontFamily: poppinsFontFamily,
+            fontWeight: FontWeight.w400,
           ),
-          bodyMedium: const TextStyle(
+          bodyMedium: baseTextStyle.copyWith(
             color: AppColors.textSecondary,
             fontSize: 14,
-            fontFamily: poppinsFontFamily,
+            fontWeight: FontWeight.w400,
+          ),
+          bodySmall: baseTextStyle.copyWith(
+            color: AppColors.textMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
           ),
         );
 
@@ -64,96 +81,102 @@ class MyApp extends StatelessWidget {
       locale: AppTranslations.getStoredLocale(),
       fallbackLocale: AppTranslations.fallback,
       theme: ThemeData(
-        useMaterial3:
-            true, //actives Material 3 (la dernière version de design Google).a
-
-        fontFamily: poppinsFontFamily,
-        colorScheme: ColorScheme.light(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        fontFamily: primaryFontFamily,
+        fontFamilyFallback: fallbackFontFamily,
+        colorScheme: const ColorScheme.dark(
           primary: AppColors.primary,
           onPrimary: Colors.white,
           primaryContainer: AppColors.primaryLight,
-          onPrimaryContainer: Colors.white,
+          onPrimaryContainer: AppColors.background,
           secondary: AppColors.accent,
           onSecondary: Colors.white,
           secondaryContainer: AppColors.accentLight,
-          onSecondaryContainer: Colors.white,
+          onSecondaryContainer: AppColors.background,
           surface: AppColors.surface,
           onSurface: AppColors.textPrimary,
           error: AppColors.error,
           onError: Colors.white,
         ),
         scaffoldBackgroundColor: AppColors.background,
-        appBarTheme: AppBarTheme(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppColors.background,
+          foregroundColor: AppColors.textPrimary,
           elevation: 0,
-          titleTextStyle: const TextStyle(
-            color: Colors.white,
+          scrolledUnderElevation: 0,
+          centerTitle: true,
+          titleTextStyle: TextStyle(
+            color: AppColors.textPrimary,
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            fontFamily: poppinsFontFamily,
+            fontFamilyFallback: fallbackFontFamily,
           ),
-          toolbarTextStyle: const TextStyle(
-            color: Colors.white,
-            fontFamily: poppinsFontFamily,
+          toolbarTextStyle: TextStyle(
+            color: AppColors.textPrimary,
+            fontFamilyFallback: fallbackFontFamily,
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
-            elevation: 2,
+            elevation: 0,
+            shadowColor: AppColors.glow,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontFamily: poppinsFontFamily,
+              fontFamilyFallback: fallbackFontFamily,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             textStyle: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontFamily: poppinsFontFamily,
+              fontFamilyFallback: fallbackFontFamily,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.primary,
-            side: const BorderSide(color: AppColors.primary),
+            foregroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.surfaceElevated,
+            side: const BorderSide(color: AppColors.divider),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             textStyle: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontFamily: poppinsFontFamily,
+              fontFamilyFallback: fallbackFontFamily,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(18),
             ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.surfaceElevated,
+          hintStyle: const TextStyle(color: AppColors.textMuted),
+          labelStyle: const TextStyle(color: AppColors.textSecondary),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.neutralLight),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.divider),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.neutralLight),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppColors.divider),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.primary),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.error),
           ),
           contentPadding: const EdgeInsets.symmetric(
@@ -162,17 +185,31 @@ class MyApp extends StatelessWidget {
           ),
         ),
         cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 2,
+          color: AppColors.surface,
+          elevation: 0,
+          shadowColor: Colors.black.withValues(alpha: 0.25),
+          margin: const EdgeInsets.symmetric(vertical: 8),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: AppColors.divider),
           ),
         ),
-        textTheme: poppinsTextTheme,
-        primaryTextTheme: poppinsTextTheme,
+        dividerColor: AppColors.divider,
+        splashColor: AppColors.primary.withValues(alpha: 0.08),
+        highlightColor: AppColors.primary.withValues(alpha: 0.06),
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: ZoomPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.windows: ZoomPageTransitionsBuilder(),
+            TargetPlatform.linux: ZoomPageTransitionsBuilder(),
+          },
+        ),
+        textTheme: botRoadTextTheme,
+        primaryTextTheme: botRoadTextTheme,
       ),
       home: const SplashScreen(),
-      // home: Iteneraire(),
     );
   }
 }

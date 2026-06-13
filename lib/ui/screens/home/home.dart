@@ -82,10 +82,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       drawer: DrawerCustom(),
-      drawerScrimColor: Colors.transparent,
+      drawerScrimColor: Colors.black.withValues(alpha: 0.35),
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        iconTheme: const IconThemeData(color: AppColors.primary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
         title: const Text(
           'BotRoad',
           style: TextStyle(
@@ -105,16 +105,36 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: SingleChildScrollView(
         child: Container(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Container(
-                height: Setting.getHeight(context) / 3.5,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(Assets.logo),
-                    fit: BoxFit.fitHeight,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: Setting.getHeight(context) / 3.8,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: AppColors.divider),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 30,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      blurRadius: 36,
+                    ),
+                  ],
+                ),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(Assets.logo),
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
@@ -122,18 +142,25 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'home_welcome'.tr,
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                  fontSize: 40,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 34,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
                 textAlign: TextAlign.center,
               ),
               Text(
                 'BOTROAD',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 35,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 32,
+                  letterSpacing: 0,
+                  shadows: [
+                    Shadow(
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 20,
+                    ),
+                  ],
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -141,8 +168,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 'home_start_ai_chat'.tr,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontSize: 20,
-                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  color: AppColors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
@@ -159,14 +186,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.divider),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        spreadRadius: 1,
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withValues(alpha: 0.25),
+                        blurRadius: 30,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
@@ -181,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: Theme.of(
                               context,
                             ).textTheme.titleLarge?.copyWith(
-                              color: AppColors.primary,
+                              color: AppColors.textPrimary,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -201,6 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ...recentConversations.map(
                         (conversation) => Card(
                           margin: const EdgeInsets.only(bottom: 8),
+                          color: AppColors.surfaceElevated,
                           child: ListTile(
                             leading: const CircleAvatar(
                               backgroundColor: AppColors.primary,
@@ -216,10 +244,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               _formatDate(conversation.date_create),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Colors.grey[600],
+                                color: AppColors.textMuted,
                               ),
                             ),
-                            trailing: const Icon(Icons.chevron_right),
+                            trailing: const Icon(
+                              Icons.chevron_right,
+                              color: AppColors.textMuted,
+                            ),
                             onTap: () {
                               Get.to(
                                 () => AIChatScreen(conversation: conversation),

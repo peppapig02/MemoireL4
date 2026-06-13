@@ -1,34 +1,34 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Couleur principale
-  static const Color primary = Color(0xFF1A3A53);
+  // BotRoad AI visual identity
+  static const Color primary = Color(0xFFFF4FA3);
 
-  // Variantes de la couleur principale
-  static const Color primaryLight = Color(0xFF2A4A63);
-  static const Color primaryDark = Color(0xFF0A2A43);
+  static const Color primaryLight = Color(0xFFFF7ABB);
+  static const Color primaryDark = Color(0xFFC91F74);
 
-  // Couleurs d'accent
-  static const Color accent = Color(0xFF4A90E2);
-  static const Color accentLight = Color(0xFF6AA0F2);
-  static const Color accentDark = Color(0xFF2A80D2);
+  static const Color accent = Color(0xFFFF7ABB);
+  static const Color accentLight = Color(0xFFFF9BCD);
+  static const Color accentDark = Color(0xFFFF2B91);
 
-  // Couleurs de fond
-  static const Color background = Color(0xFFF5F6FA);
-  static const Color surface = Colors.white;
+  static const Color background = Color(0xFF0B0B0F);
+  static const Color backgroundSecondary = Color(0xFF121218);
+  static const Color surface = Color(0xFF181820);
+  static const Color surfaceElevated = Color(0xFF20202A);
 
-  // Couleurs de texte
-  static const Color textPrimary = Color(0xFF2C3E50);
-  static const Color textSecondary = Color(0xFF7F8C8D);
+  static const Color textPrimary = Color(0xFFF8F8FA);
+  static const Color textSecondary = Color(0xFFB6B6C5);
+  static const Color textMuted = Color(0xFF808095);
 
-  // Couleurs de statut
-  static const Color success = Color(0xFF2ECC71);
-  static const Color error = Color(0xFFE74C3C);
-  static const Color warning = Color(0xFFF1C40F);
-  static const Color info = Color(0xFF3498DB);
+  static const Color success = Color(0xFF00D26A);
+  static const Color error = Color(0xFFFF5A5A);
+  static const Color warning = Color(0xFFFFB800);
+  static const Color info = Color(0xFFFF7ABB);
 
-  // Couleurs neutres
-  static const Color neutral = Color(0xFF95A5A6);
-  static const Color neutralLight = Color(0xFFBDC3C7);
-  static const Color neutralDark = Color(0xFF7F8C8D);
+  static const Color neutral = Color(0xFF808095);
+  static const Color neutralLight = Color(0xFFB6B6C5);
+  static const Color neutralDark = Color(0xFF3A3A4A);
+
+  static const Color divider = Color(0x0FFFFFFF);
+  static const Color glow = Color(0x26FF4FA3);
 }

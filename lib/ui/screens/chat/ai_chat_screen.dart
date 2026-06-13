@@ -1009,8 +1009,15 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.divider),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            blurRadius: 20,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1026,7 +1033,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           const SizedBox(width: 8),
           Text(
             'chat_typing'.tr,
-            style: TextStyle(color: Colors.black87, fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -1049,8 +1059,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     return Scaffold(
       appBar: AppBar(
         title: Text(conversations?.libelle ?? 'chat_new_conversation'.tr),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
         actions: [
           if (lastRoute?.points?.trim().isNotEmpty == true)
             IconButton(
@@ -1079,8 +1089,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           const NetworkStatusBanner(),
           if (isSearching)
             Container(
-              padding: const EdgeInsets.all(8),
-              color: Colors.white,
+              padding: const EdgeInsets.all(12),
+              color: AppColors.backgroundSecondary,
               child: TextField(
                 controller: searchController,
                 decoration: InputDecoration(
@@ -1099,7 +1109,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                           )
                           : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                 ),
                 onChanged: (value) {
@@ -1246,11 +1256,26 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                         },
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 16),
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
                             color:
-                                isUser ? AppColors.primary : Colors.grey[200],
-                            borderRadius: BorderRadius.circular(12),
+                                isUser ? AppColors.primary : AppColors.surface,
+                            borderRadius: BorderRadius.circular(22),
+                            border:
+                                isUser
+                                    ? null
+                                    : Border.all(color: AppColors.divider),
+                            boxShadow:
+                                isUser
+                                    ? [
+                                      BoxShadow(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        blurRadius: 20,
+                                      ),
+                                    ]
+                                    : null,
                           ),
                           constraints: BoxConstraints(
                             maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -1261,7 +1286,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                               Text(
                                 message.content ?? '',
                                 style: TextStyle(
-                                  color: isUser ? Colors.white : Colors.black87,
+                                  color:
+                                      isUser
+                                          ? Colors.white
+                                          : AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -1276,7 +1304,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                                   color:
                                       isUser
                                           ? Colors.white.withValues(alpha: 0.7)
-                                          : Colors.black54,
+                                          : AppColors.textMuted,
                                 ),
                               ),
                             ],
@@ -1295,15 +1323,14 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               child: CircularProgressIndicator(),
             ),
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.backgroundSecondary,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withValues(alpha: 0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 30,
+                  offset: const Offset(0, -8),
                 ),
               ],
             ),
@@ -1315,7 +1342,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                     decoration: InputDecoration(
                       hintText: 'chat_write_message'.tr,
                       border: InputBorder.none,
+                      filled: true,
+                      fillColor: AppColors.surfaceElevated,
                     ),
+                    style: const TextStyle(color: AppColors.textPrimary),
                     maxLines: null,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendMessage(),
