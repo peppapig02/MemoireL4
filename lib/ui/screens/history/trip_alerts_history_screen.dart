@@ -112,6 +112,40 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
     };
   }
 
+  String _formatWarningLocation(Map<String, dynamic> warning) {
+    final label = warning['locationLabel']?.toString().trim();
+    final address = warning['locationAddress']?.toString().trim();
+    final segment = warning['segmentId']?.toString().trim();
+    final route = warning['routeId']?.toString().trim();
+
+    if (label != null &&
+        label.isNotEmpty &&
+        address != null &&
+        address.isNotEmpty) {
+      return 'Pres de $label - $address';
+    }
+    if (label != null && label.isNotEmpty) {
+      return 'Pres de $label';
+    }
+    if (address != null && address.isNotEmpty) {
+      return address;
+    }
+    if (segment != null && segment.isNotEmpty) {
+      return 'Sur le segment $segment';
+    }
+    if (route != null && route.isNotEmpty) {
+      return 'Sur la route $route';
+    }
+
+    return 'Reference precise non renseignee';
+  }
+
+  void _closeBottomSheet() {
+    if (Get.isBottomSheetOpen == true) {
+      Get.back();
+    }
+  }
+
   Widget _buildStats(List<TripHistory> trips) {
     final stats = _calculateStats(trips);
 
@@ -223,7 +257,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: Get.back,
+                      onPressed: _closeBottomSheet,
                     ),
                   ],
                 ),
@@ -316,6 +350,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
             value: (warning['status'] ?? 'pending').toString(),
           ),
           _DetailRow(label: 'Signalement', value: _formatDate(createdAt)),
+          _DetailRow(label: 'Lieu', value: _formatWarningLocation(warning)),
           _DetailRow(label: 'Expiration', value: _formatDate(expiresAt)),
           _DetailRow(
             label: 'Rayon',

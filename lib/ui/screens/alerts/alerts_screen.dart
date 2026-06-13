@@ -112,6 +112,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   String _formatLocationReference(RoadReport alert) {
     final label = alert.locationLabel?.trim();
     final address = alert.locationAddress?.trim();
+    final segment = alert.segmentId?.trim();
+    final route = alert.routeId?.trim();
     if (label != null &&
         label.isNotEmpty &&
         address != null &&
@@ -124,7 +126,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
     if (address != null && address.isNotEmpty) {
       return address;
     }
-    return 'Reference non renseignee';
+    if (segment != null && segment.isNotEmpty) {
+      return 'Sur le segment $segment';
+    }
+    if (route != null && route.isNotEmpty) {
+      return 'Sur la route $route';
+    }
+    return 'Reference precise non renseignee';
+  }
+
+  void _closeBottomSheet() {
+    if (Get.isBottomSheetOpen == true) {
+      Get.back();
+    }
   }
 
   Future<void> _markHandled(RoadReport report) async {
@@ -542,7 +556,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
-                      onPressed: Get.back,
+                      onPressed: _closeBottomSheet,
                     ),
                   ],
                 ),
@@ -634,9 +648,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   children: [
                     OutlinedButton.icon(
                       onPressed:
-                          canVote
+                          canVote && !hasRefuted
                               ? () async {
-                                Get.back();
+                                _closeBottomSheet();
                                 await _vote(alert, confirms: true);
                               }
                               : null,
@@ -645,9 +659,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     ),
                     OutlinedButton.icon(
                       onPressed:
-                          canVote
+                          canVote && !hasConfirmed
                               ? () async {
-                                Get.back();
+                                _closeBottomSheet();
                                 await _vote(alert, confirms: false);
                               }
                               : null,
@@ -660,7 +674,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                             isHandled
                                 ? null
                                 : () async {
-                                  Get.back();
+                                  _closeBottomSheet();
                                   await _markHandled(alert);
                                 },
                         icon: const Icon(Icons.check_circle_outline),
@@ -669,7 +683,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     if (isAdmin)
                       OutlinedButton.icon(
                         onPressed: () async {
-                          Get.back();
+                          _closeBottomSheet();
                           await _deleteAlert(alert);
                         },
                         icon: const Icon(Icons.delete_outline),
@@ -810,13 +824,17 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   children: [
                     OutlinedButton.icon(
                       onPressed:
-                          canVote ? () => _vote(alert, confirms: true) : null,
+                          canVote && !hasRefuted
+                              ? () => _vote(alert, confirms: true)
+                              : null,
                       icon: const Icon(Icons.thumb_up_alt_outlined),
                       label: Text(hasConfirmed ? 'Confirme' : 'Confirmer'),
                     ),
                     OutlinedButton.icon(
                       onPressed:
-                          canVote ? () => _vote(alert, confirms: false) : null,
+                          canVote && !hasConfirmed
+                              ? () => _vote(alert, confirms: false)
+                              : null,
                       icon: const Icon(Icons.thumb_down_alt_outlined),
                       label: Text(hasRefuted ? 'Refute' : 'Refuter'),
                     ),
@@ -1020,6 +1038,8 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
   String _formatLocationReference(RoadReport alert) {
     final label = alert.locationLabel?.trim();
     final address = alert.locationAddress?.trim();
+    final segment = alert.segmentId?.trim();
+    final route = alert.routeId?.trim();
     if (label != null &&
         label.isNotEmpty &&
         address != null &&
@@ -1032,7 +1052,19 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
     if (address != null && address.isNotEmpty) {
       return address;
     }
-    return 'Reference non renseignee';
+    if (segment != null && segment.isNotEmpty) {
+      return 'Sur le segment $segment';
+    }
+    if (route != null && route.isNotEmpty) {
+      return 'Sur la route $route';
+    }
+    return 'Reference precise non renseignee';
+  }
+
+  void _closeBottomSheet() {
+    if (Get.isBottomSheetOpen == true) {
+      Get.back();
+    }
   }
 
   LatLngBounds get _bounds {
@@ -1143,6 +1175,10 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _closeBottomSheet,
                   ),
                 ],
               ),

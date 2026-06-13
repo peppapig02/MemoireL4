@@ -330,25 +330,33 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       );
 
       if (errorResponse != null) {
-        messagesCtrl.messages.value = MessagesModel(
+        final botMessage = MessagesModel(
           id_conversation: conversationId,
           sender: 'bot',
           content: errorResponse['message'] as String,
           date_create: DateTime.now().toString(),
         );
-        await messagesCtrl.addMessages();
+        messagesCtrl.messages.value = botMessage;
+        final messageId = await messagesCtrl.addMessages();
+        if (messageId == null) {
+          _cacheMessageLocally(botMessage);
+        }
         _updateConversationMemory('bot', errorResponse['message'] as String);
       }
     } else {
       // Si ce n'est pas une réponse structurée, l'afficher normalement
       final message = response['message'] as String;
-      messagesCtrl.messages.value = MessagesModel(
+      final botMessage = MessagesModel(
         id_conversation: conversationId,
         sender: 'bot',
         content: message,
         date_create: DateTime.now().toString(),
       );
-      await messagesCtrl.addMessages();
+      messagesCtrl.messages.value = botMessage;
+      final messageId = await messagesCtrl.addMessages();
+      if (messageId == null) {
+        _cacheMessageLocally(botMessage);
+      }
       _updateConversationMemory('bot', message);
     }
   }
@@ -738,17 +746,42 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
   Future<void> _saveBotMessage(String conversationId, String message) async {
     try {
-      messagesCtrl.messages.value = MessagesModel(
+      final botMessage = MessagesModel(
         id_conversation: conversationId,
         sender: 'bot',
         content: message,
         date_create: DateTime.now().toString(),
       );
-      await messagesCtrl.addMessages();
+      messagesCtrl.messages.value = botMessage;
+      final messageId = await messagesCtrl.addMessages();
+      if (messageId == null) {
+        _cacheMessageLocally(botMessage);
+      }
       _updateConversationMemory('bot', message);
     } catch (e) {
+      _cacheMessageLocally(
+        MessagesModel(
+          id_conversation: conversationId,
+          sender: 'bot',
+          content: message,
+          date_create: DateTime.now().toString(),
+        ),
+      );
       printDebug("error saveBotMessage ::: $e");
     }
+  }
+
+  void _cacheMessageLocally(MessagesModel message) {
+    if (!mounted) {
+      return;
+    }
+
+    message.key ??= 'local_${DateTime.now().microsecondsSinceEpoch}';
+    setState(() {
+      loadedMessages.removeWhere((item) => item.key == message.key);
+      loadedMessages.insert(0, message);
+      hasMoreMessages = false;
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -773,24 +806,45 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         conversationId = await conversationsCtrl.addConversations();
 
         if (conversationId == null) {
-          throw Exception('Failed to create conversation');
-        }
-        conversations = await Setting.conversationsCtrl.getOneConversations(
-          conversationId,
-        );
-        if (conversations?.key == null) {
-          throw Exception('Failed to get conversation');
+          conversationId = 'local_${DateTime.now().millisecondsSinceEpoch}';
+          conversations = ConversationsModel(
+            key: conversationId,
+            id_user: Setting.userCtrl.user.value.key,
+            libelle:
+                content.length > 30
+                    ? '${content.substring(0, 30)}...'
+                    : content,
+          );
+          networkStatusService.markOffline();
+        } else {
+          conversations = await Setting.conversationsCtrl.getOneConversations(
+            conversationId,
+          );
+          if (conversations?.key == null) {
+            conversations = ConversationsModel(
+              key: conversationId,
+              id_user: Setting.userCtrl.user.value.key,
+              libelle:
+                  content.length > 30
+                      ? '${content.substring(0, 30)}...'
+                      : content,
+            );
+          }
         }
       }
 
       // Sauvegarder le message de l'utilisateur
-      messagesCtrl.messages.value = MessagesModel(
+      final userMessage = MessagesModel(
         id_conversation: conversationId,
         sender: 'user',
         content: content,
         date_create: DateTime.now().toString(),
       );
-      await messagesCtrl.addMessages();
+      messagesCtrl.messages.value = userMessage;
+      final userMessageId = await messagesCtrl.addMessages();
+      if (userMessageId == null) {
+        _cacheMessageLocally(userMessage);
+      }
       _updateConversationMemory('user', content);
 
       final handledByMvp = await _tryHandleMvpNavigation(
@@ -1063,6 +1117,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                   final friendlyError = _toFriendlyErrorMessage(
                     snapshot.error!,
                   );
+                  networkStatusService.markOffline();
                   if (!_didShowMessagesStreamError) {
                     _didShowMessagesStreamError = true;
                     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1075,23 +1130,28 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                       }
                     });
                   }
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'chat_error_prefix'.trParams({'error': friendlyError}),
-                        textAlign: TextAlign.center,
+                  if (loadedMessages.isEmpty) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'chat_error_prefix'.trParams({
+                            'error': friendlyError,
+                          }),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  }
+                } else {
+                  networkStatusService.markOnline();
+                  _didShowMessagesStreamError = false;
                 }
-                networkStatusService.markOnline();
-                _didShowMessagesStreamError = false;
                 // printDebug(
                 //   "snapshot.hasData: ${snapshot.hasData} et snapshot.connectionState: ${snapshot.connectionState}",
                 // );
 
-                if (!snapshot.hasData) {
+                if (!snapshot.hasData && loadedMessages.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 

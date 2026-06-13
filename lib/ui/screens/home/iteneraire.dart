@@ -496,10 +496,9 @@ class _IteneraireState extends State<Iteneraire> {
 
     var selectedType = 'mauvaise_route';
     var selectedSeverity = 'moyen';
-    var isSubmittingReport = false;
     final commentController = TextEditingController();
 
-    await Get.bottomSheet(
+    final result = await Get.bottomSheet<Map<String, String?>>(
       StatefulBuilder(
         builder: (context, setSheetState) {
           return Container(
@@ -574,26 +573,20 @@ class _IteneraireState extends State<Iteneraire> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.report_problem_outlined),
-                      label: Text(
-                        isSubmittingReport
-                            ? 'Envoi...'
-                            : 'Envoyer le signalement',
-                      ),
+                      label: const Text('Envoyer le signalement'),
                       onPressed:
-                          isReporting || isSubmittingReport
+                          isReporting
                               ? null
-                              : () async {
+                              : () {
                                 final type = selectedType;
                                 final severity = selectedSeverity;
                                 final comment = commentController.text.trim();
-                                setSheetState(() {
-                                  isSubmittingReport = true;
-                                });
-                                Navigator.of(context).pop();
-                                await _submitRoadReport(
-                                  type: type,
-                                  severity: severity,
-                                  comment: comment,
+                                Get.back(
+                                  result: {
+                                    'type': type,
+                                    'severity': severity,
+                                    'comment': comment,
+                                  },
                                 );
                               },
                     ),
@@ -607,6 +600,16 @@ class _IteneraireState extends State<Iteneraire> {
     );
 
     commentController.dispose();
+
+    if (result == null || !mounted) {
+      return;
+    }
+
+    await _submitRoadReport(
+      type: result['type'] ?? 'mauvaise_route',
+      severity: result['severity'] ?? 'moyen',
+      comment: result['comment'],
+    );
   }
 
   Future<void> _submitRoadReport({
@@ -618,6 +621,8 @@ class _IteneraireState extends State<Iteneraire> {
       return;
     }
 
+    if (!mounted) return;
+
     setState(() {
       isReporting = true;
     });
@@ -627,11 +632,18 @@ class _IteneraireState extends State<Iteneraire> {
       if (position == null) {
         return;
       }
+      if (!mounted) {
+        return;
+      }
 
       final locationReference = await nearbyPlacesService.findNearestReference(
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      if (!mounted) {
+        return;
+      }
+
       final report = roadReportService.buildUserReport(
         userId: Setting.userCtrl.user.value.key,
         latitude: position.latitude,
@@ -646,6 +658,9 @@ class _IteneraireState extends State<Iteneraire> {
       );
 
       final reportId = await roadReportService.saveRoadReport(report);
+      if (!mounted) {
+        return;
+      }
       if (reportId == null) {
         Setting.showMessage(
           'login_error'.tr,

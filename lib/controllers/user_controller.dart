@@ -238,28 +238,90 @@ class UserController extends GetxController {
 
   String messageErreur = "";
 
+  String _friendlyAuthError(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-email':
+          return "Email incorrect";
+        case 'wrong-password':
+        case 'invalid-credential':
+          return "Email ou mot de passe incorrect";
+        case 'user-not-found':
+          return "Cet email ne correspond a aucun utilisateur";
+        case 'weak-password':
+          return "Mot de passe trop faible";
+        case 'email-already-in-use':
+          return "Email deja utilise";
+        case 'network-request-failed':
+          return "Probleme de connexion internet. Reessayez.";
+        case 'too-many-requests':
+          return "Trop de tentatives. Reessayez dans quelques instants.";
+        case 'operation-not-allowed':
+          return "Connexion par email/mot de passe non activee dans Firebase.";
+      }
+    }
+
+    if (raw.contains("invalid-email")) {
+      return "Email incorrect";
+    }
+    if (raw.contains("wrong-password") || raw.contains("invalid-credential")) {
+      return "Email ou mot de passe incorrect";
+    }
+    if (raw.contains("user-not-found") || raw.contains("not-found")) {
+      return "Cet email ne correspond a aucun utilisateur";
+    }
+    if (raw.contains("weak-password")) {
+      return "Mot de passe trop faible";
+    }
+    if (raw.contains("already-in-use") ||
+        raw.contains("email-already-in-use")) {
+      return "Email deja utilise";
+    }
+    if (raw.contains("network") ||
+        raw.contains("unable to resolve host") ||
+        raw.contains("unavailable")) {
+      return "Probleme de connexion internet. Reessayez.";
+    }
+
+    return "Erreur interne";
+  }
+
   Future<bool> signin(String email, String pwd) async {
     loading.value = true;
     loading.refresh();
 
     try {
       var user = await Setting.auth!.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: pwd,
       );
       Setting.user = user.user;
       var res = await getOneUser(user.user!.uid);
 
+      if (res == null) {
+        final fallbackUser = UserModel(
+          key: user.user!.uid,
+          email: user.user!.email ?? email.trim(),
+          nom: user.user!.displayName,
+          is_active: true,
+          is_admin: false,
+        );
+        await Setting.fUser.doc(user.user!.uid).set(fallbackUser.toJson());
+        res = fallbackUser;
+      }
+
+      this.user.value = res;
       openStreams();
-      this.user.value = res!;
 
       saveUserLocal();
 
-      loading.value = false;
-      loading.refresh();
       return true;
     } catch (e) {
-      if (e.toString().contains("invalid-email")) {
+      if (e is FirebaseAuthException) {
+        messageErreur = _friendlyAuthError(e);
+        printDebug("error signin::$e");
+      } else if (e.toString().contains("invalid-email")) {
         messageErreur = "Email incorrect";
         printDebug("Email incorrect");
       } else if (e.toString().contains("wrong-password")) {
@@ -273,6 +335,9 @@ class UserController extends GetxController {
         printDebug("error::`$e");
       }
       return false;
+    } finally {
+      loading.value = false;
+      loading.refresh();
     }
   }
 
