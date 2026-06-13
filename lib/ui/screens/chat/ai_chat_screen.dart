@@ -111,9 +111,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     );
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
-    routingService = RoutingService(
-      googleApiKey: AppSecrets.googleMapsApiKey,
-    );
+    routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
     tripHistoryService = TripHistoryService(collection: Setting.fTripHistory);
   }
 
@@ -150,6 +148,46 @@ class _AIChatScreenState extends State<AIChatScreen> {
       icon: const Icon(Icons.add_comment_outlined),
       tooltip: 'chat_new_conversation'.tr,
       onPressed: _startNewConversation,
+    );
+  }
+
+  Widget _buildEmbeddedHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showNewConversation = constraints.maxWidth >= 180;
+
+          return Row(
+            children: [
+              Flexible(
+                child: Text(
+                  'Assistant',
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (showNewConversation) _buildNewConversationButton(),
+              IconButton(
+                icon: Icon(isSearching ? Icons.close : Icons.search),
+                onPressed: () {
+                  setState(() {
+                    isSearching = !isSearching;
+                    if (!isSearching) {
+                      searchQuery = '';
+                      searchController.clear();
+                    }
+                  });
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -342,7 +380,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         );
 
         if (rawRouteResult != null) {
-          final routeResult = await routeRiskService.attachWarnings(rawRouteResult);
+          final routeResult = await routeRiskService.attachWarnings(
+            rawRouteResult,
+          );
           final route = await _persistRouteResult(routeResult);
           if (route == null) {
             await _saveBotMessage(
@@ -354,9 +394,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
           await _saveTripHistory(content, routeResult);
 
-          final warningText = routeResult.warnings.isNotEmpty
-              ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
-              : '';
+          final warningText =
+              routeResult.warnings.isNotEmpty
+                  ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
+                  : '';
           final botMessage =
               "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
 
@@ -364,10 +405,12 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           if (messageId != null) {
             final card = routeCardFromResult(
               route: route,
-              departure: routeResult.startLabel ??
+              departure:
+                  routeResult.startLabel ??
                   request.startText ??
                   'Position actuelle',
-              destination: routeResult.destinationLabel ??
+              destination:
+                  routeResult.destinationLabel ??
                   request.destinationText ??
                   'Destination',
               distanceKm: routeResult.distance,
@@ -428,22 +471,23 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = places.map((place) {
-          final distance = place.distance?.toStringAsFixed(1) ?? '?';
-          final rating =
-              place.rating != null ? ' - note ${place.rating!.toStringAsFixed(1)}' : '';
-          return "- ${place.name} (${distance} km${rating})";
-        }).join('\n');
+        final lines = places
+            .map((place) {
+              final distance = place.distance?.toStringAsFixed(1) ?? '?';
+              final rating =
+                  place.rating != null
+                      ? ' - note ${place.rating!.toStringAsFixed(1)}'
+                      : '';
+              return "- ${place.name} (${distance} km${rating})";
+            })
+            .join('\n');
 
         final title =
             (request.resultCount ?? 1) > 1
                 ? "Voici les ${places.length} ${request.category} les plus proches :"
                 : "Voici le ${request.category} le plus proche :";
 
-        await _saveBotMessage(
-          conversationId,
-          "$title\n$lines",
-        );
+        await _saveBotMessage(conversationId, "$title\n$lines");
         return true;
       }
 
@@ -470,13 +514,16 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           return true;
         }
 
-        final lines = historyItems.map((item) {
-          final origin = item.originLabel ?? 'Depart inconnu';
-          final destination = item.destinationLabel ?? 'Destination inconnue';
-          final distance = item.distance.toStringAsFixed(1);
-          final duration = item.duration.toStringAsFixed(0);
-          return "- $origin -> $destination ($distance km, $duration min)";
-        }).join('\n');
+        final lines = historyItems
+            .map((item) {
+              final origin = item.originLabel ?? 'Depart inconnu';
+              final destination =
+                  item.destinationLabel ?? 'Destination inconnue';
+              final distance = item.distance.toStringAsFixed(1);
+              final duration = item.duration.toStringAsFixed(0);
+              return "- $origin -> $destination ($distance km, $duration min)";
+            })
+            .join('\n');
 
         await _saveBotMessage(
           conversationId,
@@ -526,12 +573,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
   }
 
   Future<RoutesModel?> _persistRouteResult(RouteResult routeResult) async {
-    final points =
-        routeResult.geometry
-            .map(
-              (point) => '${point['latitude']},${point['longitude']}',
-            )
-            .join('|');
+    final points = routeResult.geometry
+        .map((point) => '${point['latitude']},${point['longitude']}')
+        .join('|');
 
     final route = RoutesModel(
       id_user: routeResult.userId,
@@ -637,7 +681,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       await messagesCtrl.addMessages();
       _updateConversationMemory('user', content);
 
-      final handledByMvp = await _tryHandleMvpNavigation(content, conversationId);
+      final handledByMvp = await _tryHandleMvpNavigation(
+        content,
+        conversationId,
+      );
       if (handledByMvp) {
         _scrollToBottom();
         return;
@@ -668,9 +715,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         isLoading = false;
         isTyping = false;
         if (loadedMessages.isNotEmpty) {
-          final latestBot = loadedMessages
-              .where((m) => m.sender == 'bot')
-              .firstOrNull;
+          final latestBot =
+              loadedMessages.where((m) => m.sender == 'bot').firstOrNull;
           _latestBotStreamKey = latestBot?.key;
         }
       });
@@ -815,6 +861,98 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     );
   }
 
+  String _wrapLongTextRuns(String text) {
+    return text.replaceAllMapped(RegExp(r'\S{28,}'), (match) {
+      final value = match.group(0)!;
+      final buffer = StringBuffer();
+      for (var i = 0; i < value.length; i += 18) {
+        if (i > 0) {
+          buffer.write('\u200B');
+        }
+        buffer.write(value.substring(i, (i + 18).clamp(0, value.length)));
+      }
+      return buffer.toString();
+    });
+  }
+
+  Widget _buildMessageComposer() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 100 : 12),
+      decoration: const BoxDecoration(color: AppColors.background),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final showMicButton = constraints.maxWidth >= 300;
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (showMicButton)
+                  IconButton(
+                    icon: const Icon(Icons.mic_none_rounded),
+                    color: AppColors.textMuted,
+                    onPressed: () {
+                      Get.snackbar(
+                        'Microphone',
+                        'FonctionnalitÃ© vocale bientÃ´t disponible',
+                        backgroundColor: AppColors.surface,
+                        colorText: AppColors.textPrimary,
+                      );
+                    },
+                  ),
+                Expanded(
+                  child: TextField(
+                    controller: messageController,
+                    style: const TextStyle(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'chat_write_message'.tr,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: showMicButton ? 16 : 12,
+                        vertical: 14,
+                      ),
+                    ),
+                    maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+                ScaleTap(
+                  onTap: isLoading ? null : _sendMessage,
+                  child: Container(
+                    margin: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildMessageItem(
     BuildContext context,
     List<MessagesModel> messages,
@@ -833,9 +971,10 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
     final message = messages[isTyping ? index - 1 : index];
     final isUser = message.sender == 'user';
-    final routeCard = !isUser && routeCtrl != null
-        ? routeCtrl.cardForMessage(message.key)
-        : null;
+    final routeCard =
+        !isUser && routeCtrl != null
+            ? routeCtrl.cardForMessage(message.key)
+            : null;
 
     if (routeCard != null) {
       return Align(
@@ -852,17 +991,19 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       decoration: BoxDecoration(
         color: isUser ? AppColors.primary : AppColors.surface,
         borderRadius: BorderRadius.circular(20),
-        border: isUser
-            ? null
-            : Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        boxShadow: isUser
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 16,
-                ),
-              ]
-            : null,
+        border:
+            isUser
+                ? null
+                : Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        boxShadow:
+            isUser
+                ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 16,
+                  ),
+                ]
+                : null,
       ),
       constraints: BoxConstraints(
         maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -872,27 +1013,28 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         children: [
           isUser
               ? Text(
-                  message.content ?? '',
-                  style: const TextStyle(color: Colors.white),
-                )
+                _wrapLongTextRuns(message.content ?? ''),
+                style: const TextStyle(color: Colors.white),
+                softWrap: true,
+              )
               : StreamingText(
-                  text: message.content ?? '',
-                  animate: message.key == _latestBotStreamKey,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                ),
+                text: _wrapLongTextRuns(message.content ?? ''),
+                animate: message.key == _latestBotStreamKey,
+                style: const TextStyle(color: AppColors.textPrimary),
+              ),
           const SizedBox(height: 4),
           Text(
             message.date_create != null
-                ? DateTime.parse(message.date_create!)
-                    .toLocal()
-                    .toString()
-                    .substring(0, 16)
+                ? DateTime.parse(
+                  message.date_create!,
+                ).toLocal().toString().substring(0, 16)
                 : '',
             style: TextStyle(
               fontSize: 10,
-              color: isUser
-                  ? Colors.white.withValues(alpha: 0.7)
-                  : AppColors.textMuted,
+              color:
+                  isUser
+                      ? Colors.white.withValues(alpha: 0.7)
+                      : AppColors.textMuted,
             ),
           ),
         ],
@@ -922,50 +1064,22 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
   @override
   Widget build(BuildContext context) {
-    final routeCtrl = Get.isRegistered<ActiveRouteController>()
-        ? Get.find<ActiveRouteController>()
-        : null;
+    final routeCtrl =
+        Get.isRegistered<ActiveRouteController>()
+            ? Get.find<ActiveRouteController>()
+            : null;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: widget.embedded
-          ? null
-          : AppBar(
-              automaticallyImplyLeading: true,
-              title: Text(
-                conversations?.libelle ?? 'chat_new_conversation'.tr,
-              ),
-              actions: [
-                _buildNewConversationButton(),
-                IconButton(
-                  icon: Icon(isSearching ? Icons.close : Icons.search),
-                  onPressed: () {
-                    setState(() {
-                      isSearching = !isSearching;
-                      if (!isSearching) {
-                        searchQuery = '';
-                        searchController.clear();
-                      }
-                    });
-                  },
+      appBar:
+          widget.embedded
+              ? null
+              : AppBar(
+                automaticallyImplyLeading: true,
+                title: Text(
+                  conversations?.libelle ?? 'chat_new_conversation'.tr,
                 ),
-              ],
-            ),
-      body: Column(
-        children: [
-          if (widget.embedded && !isSearching)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Row(
-                children: [
-                  Text(
-                    'Assistant',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                  const Spacer(),
+                actions: [
                   _buildNewConversationButton(),
                   IconButton(
                     icon: Icon(isSearching ? Icons.close : Icons.search),
@@ -981,7 +1095,9 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                   ),
                 ],
               ),
-            ),
+      body: Column(
+        children: [
+          if (widget.embedded && !isSearching) _buildEmbeddedHeader(),
           if (isSearching)
             Container(
               padding: const EdgeInsets.all(8),
@@ -1071,72 +1187,8 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               },
             ),
           ),
-          if (isLoading)
-            const SizedBox.shrink(),
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 100 : 12),
-            decoration: const BoxDecoration(color: AppColors.background),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.mic_none_rounded),
-                    color: AppColors.textMuted,
-                    onPressed: () {
-                      Get.snackbar(
-                        'Microphone',
-                        'Fonctionnalité vocale bientôt disponible',
-                        backgroundColor: AppColors.surface,
-                        colorText: AppColors.textPrimary,
-                      );
-                    },
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: messageController,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'chat_write_message'.tr,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                      ),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  ScaleTap(
-                    onTap: isLoading ? null : _sendMessage,
-                    child: Container(
-                      margin: const EdgeInsets.all(4),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            blurRadius: 12,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.send, size: 20, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          if (isLoading) const SizedBox.shrink(),
+          _buildMessageComposer(),
         ],
       ),
     );
