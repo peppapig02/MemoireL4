@@ -789,48 +789,60 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
     if (searchQuery.isNotEmpty) {
       return query.snapshots().map((snapshot) {
-        final messages =
-            snapshot.docs
-                .map((doc) {
-                  final data = doc.data();
-                  final message = MessagesModel.fromJson(data);
-                  message.key = doc.id;
-                  return message;
-                })
-                .where(
-                  (message) =>
-                      message.content?.toLowerCase().contains(
-                        searchQuery.toLowerCase(),
-                      ) ??
-                      false,
-                )
-                .toList();
+        final messages = snapshot.docs
+            .map((doc) {
+              final data = doc.data();
+              final message = MessagesModel.fromJson(data);
+              message.key = doc.id;
+              return message;
+            })
+            .where(
+              (message) =>
+                  message.content?.toLowerCase().contains(
+                    searchQuery.toLowerCase(),
+                  ) ??
+                  false,
+            )
+            .toList();
 
-        setState(() {
-          loadedMessages = messages;
-          hasMoreMessages = false;
-        });
+        _syncMessagesFromStream(messages);
 
         return messages;
       });
     }
 
     return query.snapshots().map((snapshot) {
-      final messages =
-          snapshot.docs.map((doc) {
-            final data = doc.data();
-            final message = MessagesModel.fromJson(data);
-            message.key = doc.id;
-            return message;
-          }).toList();
+      final messages = snapshot.docs.map((doc) {
+        final data = doc.data();
+        final message = MessagesModel.fromJson(data);
+        message.key = doc.id;
+        return message;
+      }).toList();
 
-      setState(() {
-        loadedMessages = messages;
-        lastDocument = snapshot.docs.isNotEmpty ? snapshot.docs.last : null;
-        hasMoreMessages = snapshot.docs.length == messagesPerPage;
-      });
+      _syncMessagesFromStream(
+        messages,
+        lastDoc: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      );
 
       return messages;
+    });
+  }
+
+  void _syncMessagesFromStream(
+    List<MessagesModel> messages, {
+    DocumentSnapshot? lastDoc,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        loadedMessages = messages;
+        if (searchQuery.isNotEmpty) {
+          hasMoreMessages = false;
+          return;
+        }
+        lastDocument = lastDoc;
+        hasMoreMessages = messages.length == messagesPerPage;
+      });
     });
   }
 
@@ -963,13 +975,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       return _buildTypingIndicator();
     }
 
-    if (hasMoreMessages &&
-        index == messages.length + (isTyping ? 1 : 0) &&
-        messages.isNotEmpty) {
+    final loadMoreIndex = messages.length + (isTyping ? 1 : 0);
+    if (hasMoreMessages && index == loadMoreIndex) {
       return _buildLoadMoreIndicator();
     }
 
-    final message = messages[isTyping ? index - 1 : index];
+    final messageIndex = isTyping ? index - 1 : index;
+    if (messageIndex < 0 || messageIndex >= messages.length) {
+      return const SizedBox.shrink();
+    }
+
+    final message = messages[messageIndex];
     final isUser = message.sender == 'user';
     final routeCard =
         !isUser && routeCtrl != null
@@ -1151,7 +1167,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final messages = loadedMessages;
+                final messages = snapshot.data ?? loadedMessages;
                 final isEmpty = messages.isEmpty && !isTyping;
 
                 return Stack(

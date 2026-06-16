@@ -21,11 +21,11 @@ class RouteInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    final cardWidth = MediaQuery.of(context).size.width * 0.88;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.88,
-      ),
+      width: cardWidth,
       decoration: AppTokens.cardDecoration(glowing: true),
       padding: const EdgeInsets.all(16),
       child: Column(

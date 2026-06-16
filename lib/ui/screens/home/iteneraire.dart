@@ -12,6 +12,7 @@ import 'package:botroad/models/routes_model.dart';
 import 'package:botroad/ui/widgets/network_status_banner.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter/material.dart';
@@ -66,6 +67,10 @@ class _IteneraireState extends State<Iteneraire> {
   bool isLoadingAlternative = false;
   bool isLoadingRouteMode = false;
   bool isMapInitializing = true;
+  late final FlutterTts _tts;
+  int _navSegmentIndex = 0;
+  int? _lastAnnounceBucket;
+  bool _ttsReady = false;
 
   @override
   void initState() {
@@ -80,13 +85,120 @@ class _IteneraireState extends State<Iteneraire> {
     );
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
     routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
+    _tts = FlutterTts();
+    _configureTts();
     _initializeMap();
   }
 
   @override
   void dispose() {
     navigationTimer?.cancel();
+    _tts.stop();
     super.dispose();
+  }
+
+  Future<void> _configureTts() async {
+    try {
+      await _tts.setLanguage('fr-FR');
+      await _tts.setSpeechRate(0.48);
+      await _tts.setPitch(1.0);
+      await _tts.setVolume(1.0);
+      _ttsReady = true;
+    } catch (_) {
+      _ttsReady = false;
+    }
+  }
+
+  Future<void> _speak(String message) async {
+    if (!_ttsReady) return;
+    final text = message.trim();
+    if (text.isEmpty) return;
+    try {
+      await _tts.stop();
+      await _tts.speak(text);
+    } catch (_) {}
+  }
+
+  List<Map<String, dynamic>> _routeSegmentsNormalized() {
+    final segments = widget.route?.segments;
+    if (segments == null) return const [];
+    return segments
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  String _segmentInstruction(Map<String, dynamic> segment) {
+    final raw = segment['instruction']?.toString().trim();
+    if (raw == null || raw.isEmpty) {
+      return 'Continuez tout droit';
+    }
+    return raw;
+  }
+
+  double? _segmentEndDistanceMeters(
+    Position position,
+    Map<String, dynamic> segment,
+  ) {
+    final endLat = _toDouble(segment['endLat']);
+    final endLng = _toDouble(segment['endLng']);
+    if (endLat == null || endLng == null) return null;
+    return Geolocator.distanceBetween(
+      position.latitude,
+      position.longitude,
+      endLat,
+      endLng,
+    );
+  }
+
+  int? _closestUpcomingSegmentIndex(Position position) {
+    final segments = _routeSegmentsNormalized();
+    if (segments.isEmpty) return null;
+    final startIndex = _navSegmentIndex.clamp(0, segments.length - 1);
+    var bestIndex = startIndex;
+    var bestDist = double.infinity;
+    for (var i = startIndex; i < segments.length; i++) {
+      final d = _segmentEndDistanceMeters(position, segments[i]);
+      if (d == null) continue;
+      if (d < bestDist) {
+        bestDist = d;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
+  int? _announceBucketForMeters(double meters) {
+    if (meters <= 0) return null;
+    if (meters <= 60) return 50;
+    if (meters <= 120) return 100;
+    if (meters <= 230) return 200;
+    if (meters <= 360) return 300;
+    return null;
+  }
+
+  Future<void> _maybeSpeakNextInstruction(Position position) async {
+    final segments = _routeSegmentsNormalized();
+    if (segments.isEmpty || !isNavigating) return;
+
+    final idx = _closestUpcomingSegmentIndex(position);
+    if (idx == null) return;
+    _navSegmentIndex = idx;
+
+    final distanceMeters = _segmentEndDistanceMeters(position, segments[idx]);
+    if (distanceMeters == null) return;
+
+    if (distanceMeters < 25 && idx + 1 < segments.length) {
+      _navSegmentIndex = idx + 1;
+      _lastAnnounceBucket = null;
+      return;
+    }
+
+    final bucket = _announceBucketForMeters(distanceMeters);
+    if (bucket == null || bucket == _lastAnnounceBucket) return;
+    _lastAnnounceBucket = bucket;
+
+    await _speak('Dans $bucket mètres, ${_segmentInstruction(segments[idx])}');
   }
 
   Future<void> _initializeMap() async {
@@ -355,7 +467,11 @@ class _IteneraireState extends State<Iteneraire> {
 
     setState(() {
       isNavigating = true;
+      _navSegmentIndex = 0;
+      _lastAnnounceBucket = null;
     });
+
+    await _speak('Navigation démarrée.');
 
     navigationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
@@ -374,6 +490,7 @@ class _IteneraireState extends State<Iteneraire> {
           );
         });
         networkStatusService.markOnline();
+        await _maybeSpeakNextInstruction(position);
 
         if (widget.route?.points != null) {
           final points = widget.route!.points!.split('|');
@@ -393,6 +510,7 @@ class _IteneraireState extends State<Iteneraire> {
             setState(() {
               isNavigating = false;
             });
+            await _speak('Vous êtes arrivé à destination.');
             Setting.showMessage(
               'itinerary_arrived_title'.tr,
               'itinerary_arrived_message'.tr,
@@ -427,6 +545,7 @@ class _IteneraireState extends State<Iteneraire> {
     setState(() {
       isNavigating = false;
     });
+    _tts.stop();
   }
 
   double? _toDouble(dynamic value) {
@@ -649,7 +768,7 @@ class _IteneraireState extends State<Iteneraire> {
     });
 
     try {
-      final position = await _getAllowedCurrentPosition();
+      final position = currentPosition ?? await _getAllowedCurrentPosition();
       if (position == null) {
         return;
       }
@@ -993,10 +1112,16 @@ class _IteneraireState extends State<Iteneraire> {
     return math.sqrt((xDistance * xDistance) + (yDistance * yDistance));
   }
 
+  double _mapControlsTopInset(BuildContext context) {
+    if (!widget.embedded) return 16;
+    return MediaQuery.of(context).padding.top + 72;
+  }
+
   @override
   Widget build(BuildContext context) {
     final height = MediaQuery.of(context).size.height;
     final width = MediaQuery.of(context).size.width;
+    final controlsTop = _mapControlsTopInset(context);
     printDebug('route name : ${widget.route?.nom}');
 
     var center = const LatLng(-4.322447, 15.307045);
@@ -1082,6 +1207,7 @@ class _IteneraireState extends State<Iteneraire> {
                             mapToolbarEnabled: false,
                             mapType: MapType.normal,
                             padding: EdgeInsets.only(
+                              top: widget.embedded ? controlsTop : 0,
                               bottom: widget.embedded ? height * 0.32 : height * 0.24,
                             ),
                           ),
@@ -1100,7 +1226,7 @@ class _IteneraireState extends State<Iteneraire> {
                             ),
                           ),
                           Positioned(
-                            top: 16,
+                            top: controlsTop,
                             left: 16,
                             child: ElevatedButton.icon(
                               onPressed:
@@ -1126,7 +1252,7 @@ class _IteneraireState extends State<Iteneraire> {
                             ),
                           ),
                           Positioned(
-                            top: 16,
+                            top: controlsTop,
                             right: 16,
                             child: ElevatedButton.icon(
                               onPressed: isReporting ? null : _showReportSheet,
@@ -1142,7 +1268,7 @@ class _IteneraireState extends State<Iteneraire> {
                             ),
                           ),
                           Positioned(
-                            top: 64,
+                            top: controlsTop + 52,
                             right: 16,
                             child: ElevatedButton.icon(
                               onPressed:
@@ -1496,7 +1622,6 @@ class NavigationBottomSheet extends StatelessWidget {
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             decoration: const BoxDecoration(
@@ -1635,27 +1760,30 @@ class NavigationBottomSheet extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: onStartNavigation,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isNavigating ? AppColors.error : AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shadowColor: AppColors.glow,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onStartNavigation,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      isNavigating ? AppColors.error : AppColors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shadowColor: AppColors.glow,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
                 ),
-              ),
-              child: Text(
-                isNavigating
-                    ? 'itinerary_stop_navigation'.tr
-                    : 'itinerary_start_navigation'.tr,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                child: Text(
+                  isNavigating
+                      ? 'itinerary_stop_navigation'.tr
+                      : 'itinerary_start_navigation'.tr,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

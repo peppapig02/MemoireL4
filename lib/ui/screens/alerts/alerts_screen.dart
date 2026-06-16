@@ -1,14 +1,20 @@
 import 'package:botroad/core/models/road_report.dart';
 import 'package:botroad/core/services/road_report_service.dart';
+import 'package:botroad/ui/animations/skeleton.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
+import 'package:botroad/ui/widgets/v2/app_card.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class AlertsScreen extends StatefulWidget {
-  const AlertsScreen({super.key});
+  final bool embedded;
+
+  const AlertsScreen({super.key, this.embedded = true});
 
   @override
   State<AlertsScreen> createState() => _AlertsScreenState();
@@ -253,11 +259,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
   Color _severityColor(String severity) {
     switch (severity) {
       case 'eleve':
-        return const Color(0xFFE53935);
+        return AppColors.error;
       case 'moyen':
-        return const Color(0xFFFF9800);
+        return AppColors.warning;
       default:
-        return const Color(0xFF4CAF50);
+        return AppColors.success;
     }
   }
 
@@ -321,70 +327,66 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Widget _buildStats(List<RoadReport> alerts) {
     final stats = _calculateStats(alerts);
+    final theme = Theme.of(context);
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Statistiques',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
+          Text('Statistiques', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
               _StatTile(
-                icon: Icons.warning_amber_rounded,
+                icon: LucideIcons.triangleAlert,
                 label: 'Total',
                 value: '${stats.total}',
                 color: AppColors.primary,
               ),
               _StatTile(
-                icon: Icons.radar,
+                icon: LucideIcons.radar,
                 label: 'Actives',
                 value: '${stats.active}',
-                color: const Color(0xFFE53935),
+                color: AppColors.error,
               ),
               _StatTile(
-                icon: Icons.check_circle_outline,
+                icon: LucideIcons.circleCheck,
                 label: 'Prises en charge',
                 value: '${stats.handled}',
-                color: const Color(0xFF2E7D32),
+                color: AppColors.success,
               ),
               _StatTile(
-                icon: Icons.schedule,
+                icon: LucideIcons.clock,
                 label: 'Expirees',
                 value: '${stats.expired}',
-                color: const Color(0xFF6B7280),
+                color: AppColors.textMuted,
               ),
               _StatTile(
-                icon: Icons.category_outlined,
+                icon: LucideIcons.layers,
                 label: 'Type frequent',
                 value: _formatType(stats.topType),
-                color: const Color(0xFF1565C0),
+                color: AppColors.info,
               ),
               _StatTile(
-                icon: Icons.priority_high,
+                icon: LucideIcons.signalHigh,
                 label: 'Gravite dominante',
                 value: stats.dominantSeverity,
                 color: _severityColor(stats.dominantSeverity),
               ),
               _StatTile(
-                icon: Icons.thumb_up_alt_outlined,
+                icon: LucideIcons.thumbsUp,
                 label: 'Confirmations',
                 value: '${stats.confirmations}',
-                color: const Color(0xFF2E7D32),
+                color: AppColors.success,
               ),
               _StatTile(
-                icon: Icons.thumb_down_alt_outlined,
+                icon: LucideIcons.thumbsDown,
                 label: 'Refutations',
                 value: '${stats.refutations}',
-                color: const Color(0xFFC62828),
+                color: AppColors.error,
               ),
             ],
           ),
@@ -447,9 +449,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   Widget _buildFilters(List<RoadReport> alerts) {
     final types = _availableTypes(alerts);
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      color: const Color(0xFFF7F8FA),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -464,11 +465,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 'handled': 'Prises en charge',
                 'expired': 'Expirees',
               },
-              onChanged: (value) {
-                setState(() {
-                  statusFilter = value;
-                });
-              },
+              onChanged: (value) => setState(() => statusFilter = value),
             ),
             const SizedBox(width: 8),
             _FilterMenu(
@@ -478,11 +475,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 'all': 'Tous les types',
                 for (final type in types) type: _formatType(type),
               },
-              onChanged: (value) {
-                setState(() {
-                  typeFilter = value;
-                });
-              },
+              onChanged: (value) => setState(() => typeFilter = value),
             ),
             const SizedBox(width: 8),
             _FilterMenu(
@@ -494,11 +487,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 'moyen': 'Moyen',
                 'eleve': 'Eleve',
               },
-              onChanged: (value) {
-                setState(() {
-                  severityFilter = value;
-                });
-              },
+              onChanged: (value) => setState(() => severityFilter = value),
             ),
           ],
         ),
@@ -521,21 +510,40 @@ class _AlertsScreenState extends State<AlertsScreen> {
       Container(
         constraints: const BoxConstraints(maxHeight: 720),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTokens.radiusBottomSheet),
+          ),
+          border: Border(top: BorderSide(color: AppColors.divider)),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.textMuted,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CircleAvatar(
-                      backgroundColor: color.withValues(alpha: 0.14),
-                      child: Icon(Icons.warning_amber_rounded, color: color),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(LucideIcons.triangleAlert, color: color, size: 22),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -544,18 +552,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         children: [
                           Text(
                             _formatType(alert.type),
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                           const SizedBox(height: 4),
-                          Text(_formatStatus(alert.status)),
+                          _StatusPill(
+                            label: _formatStatus(alert.status),
+                            color: isHandled ? AppColors.success : AppColors.warning,
+                          ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(LucideIcons.x, color: AppColors.textMuted),
                       onPressed: _closeBottomSheet,
                     ),
                   ],
@@ -638,7 +646,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   const SizedBox(height: 12),
                   _DetailSection(
                     title: 'Commentaire',
-                    children: [Text(alert.comment!)],
+                    children: [
+                      Text(
+                        alert.comment!,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
                 ],
                 const SizedBox(height: 16),
@@ -654,8 +667,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                 await _vote(alert, confirms: true);
                               }
                               : null,
-                      icon: const Icon(Icons.thumb_up_alt_outlined),
+                      icon: const Icon(LucideIcons.thumbsUp, size: 18),
                       label: Text(hasConfirmed ? 'Confirme' : 'Confirmer'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.success,
+                        side: BorderSide(
+                          color: AppColors.success.withValues(alpha: 0.4),
+                        ),
+                      ),
                     ),
                     OutlinedButton.icon(
                       onPressed:
@@ -665,8 +684,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                 await _vote(alert, confirms: false);
                               }
                               : null,
-                      icon: const Icon(Icons.thumb_down_alt_outlined),
+                      icon: const Icon(LucideIcons.thumbsDown, size: 18),
                       label: Text(hasRefuted ? 'Refute' : 'Refuter'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.error,
+                        side: BorderSide(
+                          color: AppColors.error.withValues(alpha: 0.4),
+                        ),
+                      ),
                     ),
                     if (isAdmin)
                       OutlinedButton.icon(
@@ -677,7 +702,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                   _closeBottomSheet();
                                   await _markHandled(alert);
                                 },
-                        icon: const Icon(Icons.check_circle_outline),
+                        icon: const Icon(LucideIcons.circleCheck, size: 18),
                         label: const Text('Pris en charge'),
                       ),
                     if (isAdmin)
@@ -686,10 +711,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           _closeBottomSheet();
                           await _deleteAlert(alert);
                         },
-                        icon: const Icon(Icons.delete_outline),
+                        icon: const Icon(LucideIcons.trash2, size: 18),
                         label: const Text('Supprimer'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
+                          foregroundColor: AppColors.error,
                         ),
                       ),
                   ],
@@ -705,164 +730,127 @@ class _AlertsScreenState extends State<AlertsScreen> {
   Widget _buildAlertCard(RoadReport alert) {
     final color = _severityColor(alert.severity);
     final isHandled = alert.status == 'handled';
-    final currentUserId = Setting.userCtrl.user.value.key;
-    final isAdmin = Setting.userCtrl.user.value.is_admin == true;
-    final canVote = alert.isActive && alert.id != null && currentUserId != null;
-    final hasConfirmed =
-        currentUserId != null && alert.confirmedBy.contains(currentUserId);
-    final hasRefuted =
-        currentUserId != null && alert.refutedBy.contains(currentUserId);
+    final theme = Theme.of(context);
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showAlertDetails(alert),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CircleAvatar(
-                    backgroundColor: color.withValues(alpha: 0.14),
-                    child: Icon(Icons.warning_amber_rounded, color: color),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _formatType(alert.type),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(_formatDate(alert.createdAt)),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color:
-                          isHandled
-                              ? const Color(0xFFE8F5E9)
-                              : const Color(0xFFFFF4E5),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _formatStatus(alert.status),
-                      style: TextStyle(
-                        color:
-                            isHandled
-                                ? const Color(0xFF2E7D32)
-                                : const Color(0xFF8A5200),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text('Gravite : ${alert.severity}'),
-              const SizedBox(height: 6),
-              Text(
-                _formatLocationReference(alert),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                _formatDistanceFromCurrent(alert),
-                style: const TextStyle(color: Colors.black54),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  _VoteChip(
-                    icon: Icons.thumb_up_alt_outlined,
-                    label: '${alert.confirmationCount}',
-                    color: const Color(0xFF2E7D32),
-                    filled: hasConfirmed,
-                  ),
-                  const SizedBox(width: 8),
-                  _VoteChip(
-                    icon: Icons.thumb_down_alt_outlined,
-                    label: '${alert.refutationCount}',
-                    color: const Color(0xFFC62828),
-                    filled: hasRefuted,
-                  ),
-                ],
-              ),
-              Text(
-                'Expiration : ${_formatDate(alert.expiresAt)}',
-                style: const TextStyle(color: Colors.black54),
-              ),
-              if (alert.comment?.trim().isNotEmpty == true) ...[
-                const SizedBox(height: 8),
-                Text(
-                  alert.comment!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (alert.id != null) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+    return AppCard(
+      padding: const EdgeInsets.all(16),
+      onTap: () => _showAlertDetails(alert),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(LucideIcons.triangleAlert, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    OutlinedButton.icon(
-                      onPressed:
-                          canVote && !hasRefuted
-                              ? () => _vote(alert, confirms: true)
-                              : null,
-                      icon: const Icon(Icons.thumb_up_alt_outlined),
-                      label: Text(hasConfirmed ? 'Confirme' : 'Confirmer'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed:
-                          canVote && !hasConfirmed
-                              ? () => _vote(alert, confirms: false)
-                              : null,
-                      icon: const Icon(Icons.thumb_down_alt_outlined),
-                      label: Text(hasRefuted ? 'Refute' : 'Refuter'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => _showAlertDetails(alert),
-                      icon: const Icon(Icons.info_outline),
-                      label: const Text('Details'),
-                    ),
-                    if (isAdmin)
-                      OutlinedButton.icon(
-                        onPressed: isHandled ? null : () => _markHandled(alert),
-                        icon: const Icon(Icons.check_circle_outline),
-                        label: const Text('Pris en charge'),
+                    Expanded(
+                      child: Text(
+                        _formatType(alert.type),
+                        style: theme.textTheme.titleMedium,
                       ),
-                    if (isAdmin)
-                      OutlinedButton.icon(
-                        onPressed: () => _deleteAlert(alert),
-                        icon: const Icon(Icons.delete_outline),
-                        label: const Text('Supprimer'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                        ),
-                      ),
+                    ),
+                    _StatusPill(
+                      label: _formatStatus(alert.status),
+                      color: isHandled ? AppColors.success : AppColors.warning,
+                    ),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatDate(alert.createdAt),
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _formatLocationReference(alert),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatDistanceFromCurrent(alert),
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _InfoPill(
+                      icon: LucideIcons.signalHigh,
+                      label: alert.severity,
+                      color: color,
+                    ),
+                    _VoteChip(
+                      icon: LucideIcons.thumbsUp,
+                      label: '${alert.confirmationCount}',
+                      color: AppColors.success,
+                      filled: alert.confirmationCount > 0,
+                    ),
+                    _VoteChip(
+                      icon: LucideIcons.thumbsDown,
+                      label: '${alert.refutationCount}',
+                      color: AppColors.error,
+                      filled: alert.refutationCount > 0,
+                    ),
+                  ],
+                ),
+                if (alert.comment?.trim().isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    alert.comment!,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
+          const Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({required String message}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              LucideIcons.triangleAlert,
+              size: 56,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
         ),
       ),
     );
@@ -870,80 +858,110 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Alertes route'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          FutureBuilder<List<RoadReport>>(
-            future: alertsFuture,
-            builder: (context, snapshot) {
-              return IconButton(
-                tooltip: 'Carte',
-                icon: const Icon(Icons.map_outlined),
-                onPressed:
-                    snapshot.hasData ? () => _openMap(snapshot.data!) : null,
-              );
-            },
-          ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
-        ],
-      ),
-      body: FutureBuilder<List<RoadReport>>(
-        future: alertsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final alerts = snapshot.data ?? const <RoadReport>[];
-          if (alerts.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'Aucune alerte active pour le moment.',
-                  textAlign: TextAlign.center,
-                ),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(20, widget.embedded ? 16 : 8, 12, 0),
+              child: Row(
+                children: [
+                  if (!widget.embedded)
+                    IconButton(
+                      icon: const Icon(LucideIcons.arrowLeft),
+                      onPressed: Get.back,
+                    ),
+                  Expanded(
+                    child: Text(
+                      'Signalements',
+                      style: theme.textTheme.displayLarge?.copyWith(fontSize: 28),
+                    ),
+                  ),
+                  FutureBuilder<List<RoadReport>>(
+                    future: alertsFuture,
+                    builder: (context, snapshot) {
+                      return IconButton(
+                        tooltip: 'Carte',
+                        icon: const Icon(LucideIcons.map),
+                        onPressed:
+                            snapshot.hasData
+                                ? () => _openMap(snapshot.data!)
+                                : null,
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(LucideIcons.refreshCw),
+                    onPressed: _refresh,
+                  ),
+                ],
               ),
-            );
-          }
-          final filteredAlerts = _applyFilters(alerts);
+            ),
+            Expanded(
+              child: FutureBuilder<List<RoadReport>>(
+                future: alertsFuture,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SkeletonList(count: 5);
+                  }
 
-          return Column(
-            children: [
-              _buildStats(alerts),
-              _buildFilters(alerts),
-              Expanded(
-                child:
-                    filteredAlerts.isEmpty
-                        ? const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
+                  final alerts = snapshot.data ?? const <RoadReport>[];
+                  if (alerts.isEmpty) {
+                    return _buildEmptyState(
+                      message: 'Aucun signalement pour le moment.',
+                    );
+                  }
+
+                  final filteredAlerts = _applyFilters(alerts);
+
+                  return RefreshIndicator(
+                    onRefresh: _refresh,
+                    color: AppColors.primary,
+                    child: CustomScrollView(
+                      slivers: [
+                        SliverToBoxAdapter(child: _buildStats(alerts)),
+                        SliverToBoxAdapter(child: _buildFilters(alerts)),
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                          sliver: SliverToBoxAdapter(
                             child: Text(
-                              'Aucune alerte ne correspond aux filtres.',
-                              textAlign: TextAlign.center,
+                              'Signalements (${filteredAlerts.length})',
+                              style: theme.textTheme.titleMedium,
                             ),
                           ),
-                        )
-                        : RefreshIndicator(
-                          onRefresh: _refresh,
-                          child: ListView.separated(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: filteredAlerts.length,
-                            separatorBuilder:
-                                (_, __) => const SizedBox(height: 10),
-                            itemBuilder: (context, index) {
-                              final alert = filteredAlerts[index];
-                              return _buildAlertCard(alert);
-                            },
-                          ),
                         ),
+                        if (filteredAlerts.isEmpty)
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: _buildEmptyState(
+                              message:
+                                  'Aucun signalement ne correspond aux filtres.',
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                            sliver: SliverList.separated(
+                              itemCount: filteredAlerts.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                return _buildAlertCard(filteredAlerts[index]);
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -992,19 +1010,23 @@ class _FilterMenu extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE0E0E0)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '$label : ${options[value] ?? value}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontSize: 13,
+              ),
             ),
             const SizedBox(width: 6),
-            const Icon(Icons.expand_more, size: 18),
+            const Icon(Icons.expand_more, size: 18, color: AppColors.textMuted),
           ],
         ),
       ),
@@ -1134,10 +1156,13 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
 
     Get.bottomSheet(
       Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppTokens.radiusBottomSheet),
+          ),
+          border: Border(top: BorderSide(color: AppColors.divider)),
         ),
         child: SafeArea(
           child: Column(
@@ -1146,11 +1171,17 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: severityColor.withValues(alpha: 0.14),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: severityColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     child: Icon(
-                      Icons.warning_amber_rounded,
+                      LucideIcons.triangleAlert,
                       color: severityColor,
+                      size: 20,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1160,10 +1191,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                       children: [
                         Text(
                           widget.formatType(alert.type),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -1177,7 +1205,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close),
+                    icon: const Icon(LucideIcons.x, color: AppColors.textMuted),
                     onPressed: _closeBottomSheet,
                   ),
                 ],
@@ -1221,7 +1249,10 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
               ),
               if (alert.comment?.trim().isNotEmpty == true) ...[
                 const SizedBox(height: 12),
-                Text(alert.comment!),
+                Text(
+                  alert.comment!,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ],
             ],
           ),
@@ -1233,10 +1264,12 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Carte des alertes'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
+        title: const Text('Carte des signalements'),
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.textPrimary,
+        elevation: 0,
         actions: [
           IconButton(
             tooltip: 'Recentrer',
@@ -1353,13 +1386,17 @@ class _MapDetailRow extends StatelessWidget {
             width: 90,
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
         ],
       ),
     );
@@ -1404,13 +1441,13 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 160,
-      constraints: const BoxConstraints(minHeight: 86),
+      width: 158,
+      constraints: const BoxConstraints(minHeight: 82),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1420,9 +1457,9 @@ class _StatTile extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1433,21 +1470,78 @@ class _StatTile extends StatelessWidget {
                   value,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final Color color;
+
+  const _StatusPill({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _InfoPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );
@@ -1466,16 +1560,18 @@ class _DetailSection extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           ...children,
@@ -1500,18 +1596,14 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
             ),
           ),
         ],
@@ -1536,20 +1628,29 @@ class _VoteChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: filled ? color.withValues(alpha: 0.14) : const Color(0xFFF5F5F5),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: filled ? color : const Color(0xFFE0E0E0)),
+        color:
+            filled
+                ? color.withValues(alpha: 0.14)
+                : AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: filled ? color.withValues(alpha: 0.5) : AppColors.divider,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 5),
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),

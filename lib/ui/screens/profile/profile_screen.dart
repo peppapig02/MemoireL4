@@ -5,6 +5,7 @@ import 'package:botroad/core/models/road_report.dart';
 import 'package:botroad/core/models/trip_history.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
+import 'package:botroad/ui/screens/alerts/alerts_screen.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/ui/widgets/v2/app_card.dart';
 import 'package:botroad/ui/widgets/v2/primary_button.dart';
@@ -326,6 +327,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'Préférences',
                       child: Column(
                         children: [
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(Icons.warning_amber_rounded),
+                            title: const Text('Signalements'),
+                            subtitle: const Text('Consulter les signalements'),
+                            trailing: const Icon(
+                              LucideIcons.chevronRight,
+                              size: 18,
+                            ),
+                            onTap: () => Get.to(() => const AlertsScreen()),
+                          ),
                           ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: const Icon(LucideIcons.languages),

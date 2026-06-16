@@ -1,4 +1,5 @@
 import 'package:botroad/ui/screens/chat/ai_chat_screen.dart';
+import 'package:botroad/ui/screens/alerts/alerts_screen.dart';
 import 'package:botroad/ui/screens/history/history_screen.dart';
 import 'package:botroad/ui/screens/main/main_nav_controller.dart';
 import 'package:botroad/ui/screens/map/map_tab_screen.dart';
@@ -12,7 +13,7 @@ import 'package:get/get.dart';
 class MainShell extends StatelessWidget {
   const MainShell({super.key, this.initialIndex = 0});
 
-  /// 0=Assistant, 1=Carte, 2=Historique, 3=Profil
+  /// 0=Assistant, 1=Carte, 2=Alertes, 3=Historique, 4=Profil
   final int initialIndex;
 
   @override
@@ -29,6 +30,7 @@ class MainShell extends StatelessWidget {
           children: const [
             AIChatScreen(embedded: true),
             MapTabScreen(),
+            AlertsScreen(),
             HistoryScreen(embedded: true),
             ProfileScreen(embedded: true),
           ],

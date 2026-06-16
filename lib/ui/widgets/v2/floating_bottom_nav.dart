@@ -17,6 +17,7 @@ class FloatingBottomNav extends StatelessWidget {
   static const _items = [
     (icon: CupertinoIcons.chat_bubble_2_fill, label: 'Assistant'),
     (icon: CupertinoIcons.map_fill, label: 'Carte'),
+    (icon: CupertinoIcons.exclamationmark_triangle_fill, label: 'Alertes'),
     (icon: CupertinoIcons.clock_fill, label: 'Historique'),
     (icon: CupertinoIcons.person_fill, label: 'Profil'),
   ];

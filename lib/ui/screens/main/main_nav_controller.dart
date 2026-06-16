@@ -5,7 +5,7 @@ class MainNavController extends GetxController {
   final RxInt currentIndex = 0.obs; // Assistant par défaut
 
   void switchTo(int index) {
-    if (index >= 0 && index <= 3) {
+    if (index >= 0 && index <= 4) {
       currentIndex.value = index;
     }
   }
