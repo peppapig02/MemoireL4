@@ -1,8 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/road_report.dart';
 
 class RoadReportService {
+  static final ValueNotifier<int> refreshRevision = ValueNotifier<int>(0);
+
   final CollectionReference<Map<String, dynamic>> collection;
 
   RoadReportService({required this.collection});
@@ -71,6 +74,7 @@ class RoadReportService {
     try {
       final doc = await collection.add(report.toJson());
       await doc.update({'id': doc.id});
+      notifyReportsChanged();
       return doc.id;
     } catch (_) {
       return null;
@@ -110,7 +114,24 @@ class RoadReportService {
           .where((report) => report.isActive)
           .toList();
     } catch (_) {
-      return const [];
+      try {
+        final snapshot = await collection.limit(limit).get();
+        final reports =
+            snapshot.docs
+                .map(
+                  (doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id),
+                )
+                .where((report) => report.isActive)
+                .toList();
+        reports.sort((a, b) {
+          final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return bDate.compareTo(aDate);
+        });
+        return reports;
+      } catch (_) {
+        return const [];
+      }
     }
   }
 
@@ -149,6 +170,7 @@ class RoadReportService {
   Future<bool> markReportHandled(String reportId) async {
     try {
       await collection.doc(reportId).update({'status': 'handled'});
+      notifyReportsChanged();
       return true;
     } catch (_) {
       return false;
@@ -172,6 +194,7 @@ class RoadReportService {
   Future<bool> deleteReport(String reportId) async {
     try {
       await collection.doc(reportId).delete();
+      notifyReportsChanged();
       return true;
     } catch (_) {
       return false;
@@ -218,10 +241,15 @@ class RoadReportService {
           'refutationCount': refutedBy.length,
         });
       });
+      notifyReportsChanged();
       return true;
     } catch (_) {
       return false;
     }
+  }
+
+  static void notifyReportsChanged() {
+    refreshRevision.value++;
   }
 
   String inferType(String message) {

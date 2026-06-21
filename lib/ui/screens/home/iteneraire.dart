@@ -9,6 +9,7 @@ import 'package:botroad/core/services/nearby_places_service.dart';
 import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
 import 'package:botroad/models/routes_model.dart';
+import 'package:botroad/ui/screens/main/main_nav_controller.dart';
 import 'package:botroad/ui/widgets/network_status_banner.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
@@ -67,6 +68,8 @@ class _IteneraireState extends State<Iteneraire> {
   bool isLoadingAlternative = false;
   bool isLoadingRouteMode = false;
   bool isMapInitializing = true;
+  bool _trafficEnabled = false;
+  bool _alertsEnabled = false;
   late final FlutterTts _tts;
   int _navSegmentIndex = 0;
   int? _lastAnnounceBucket;
@@ -218,7 +221,7 @@ class _IteneraireState extends State<Iteneraire> {
       markers.clear();
       polylines.clear();
 
-      if (points.length <= 2) {
+      if (points.length <= 2 || widget.route?.segments?.isEmpty != false) {
         final detailedRoute = await routingService.calculateRoute(
           userId: Setting.userCtrl.user.value.key,
           startLat: points.first.latitude,
@@ -239,8 +242,10 @@ class _IteneraireState extends State<Iteneraire> {
                 .toList() ??
             const <LatLng>[];
 
-        if (detailedRoute != null && detailedPoints.length > points.length) {
-          points = detailedPoints;
+        if (detailedRoute != null && detailedPoints.length >= 2) {
+          if (detailedPoints.length > points.length) {
+            points = detailedPoints;
+          }
           widget.route!
             ..points = points
                 .map((point) => '${point.latitude},${point.longitude}')
@@ -582,13 +587,13 @@ class _IteneraireState extends State<Iteneraire> {
     );
   }
 
-  String? _nearestSegmentId(double latitude, double longitude) {
+  Map<String, dynamic>? _nearestSegment(double latitude, double longitude) {
     final segments = widget.route?.segments ?? const [];
     if (segments.isEmpty) {
       return null;
     }
 
-    String? nearestId;
+    Map<String, dynamic>? nearestSegment;
     var nearestDistance = double.infinity;
     for (final segment in segments) {
       final startLat = _toDouble(segment['startLat']);
@@ -612,11 +617,11 @@ class _IteneraireState extends State<Iteneraire> {
       );
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        nearestId = segment['id']?.toString();
+        nearestSegment = Map<String, dynamic>.from(segment);
       }
     }
 
-    return nearestId;
+    return nearestSegment;
   }
 
   Future<void> _showReportSheet() async {
@@ -780,17 +785,33 @@ class _IteneraireState extends State<Iteneraire> {
         latitude: position.latitude,
         longitude: position.longitude,
       );
+      final preciseAddress =
+          locationReference?.address ??
+          await nearbyPlacesService.reverseGeocodeAddress(
+            latitude: position.latitude,
+            longitude: position.longitude,
+          );
       if (!mounted) {
         return;
       }
 
+      final nearestSegment = _nearestSegment(
+        position.latitude,
+        position.longitude,
+      );
+      final segmentInstruction =
+          nearestSegment?['instruction']?.toString().trim();
       final report = roadReportService.buildUserReport(
         userId: Setting.userCtrl.user.value.key,
         latitude: position.latitude,
         longitude: position.longitude,
         locationLabel: locationReference?.name,
-        locationAddress: locationReference?.address,
-        segmentId: _nearestSegmentId(position.latitude, position.longitude),
+        locationAddress:
+            preciseAddress ??
+            (segmentInstruction?.isNotEmpty == true
+                ? 'Etape: $segmentInstruction'
+                : null),
+        segmentId: nearestSegment?['id']?.toString(),
         routeId: widget.route?.key,
         type: type,
         severity: severity,
@@ -828,6 +849,12 @@ class _IteneraireState extends State<Iteneraire> {
         'Signalement enregistre pour 48h. Retrouvez-le dans Alertes route.',
         Colors.green,
       );
+      if (widget.embedded) {
+        switchMainTab(2);
+      } else {
+        Get.back();
+        switchMainTab(2);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -1114,7 +1141,75 @@ class _IteneraireState extends State<Iteneraire> {
 
   double _mapControlsTopInset(BuildContext context) {
     if (!widget.embedded) return 16;
-    return MediaQuery.of(context).padding.top + 72;
+    return MediaQuery.of(context).padding.top + 84;
+  }
+
+  void _openFullscreenMap() {
+    Get.to(() => Iteneraire(route: widget.route, embedded: false));
+  }
+
+  void _toggleTraffic() {
+    setState(() => _trafficEnabled = !_trafficEnabled);
+    Setting.showMessage(
+      'Trafic',
+      _trafficEnabled
+          ? 'Couche des embouteillages activee.'
+          : 'Couche des embouteillages masquee.',
+    );
+  }
+
+  Future<void> _toggleAlerts() async {
+    final enabled = !_alertsEnabled;
+    if (!enabled) {
+      setState(() {
+        _alertsEnabled = false;
+        markers.removeWhere(
+          (marker) => marker.markerId.value.startsWith('global_alert_'),
+        );
+      });
+      return;
+    }
+
+    final reports = await roadReportService.getActiveRoadReports(limit: 100);
+    if (!mounted) return;
+    setState(() {
+      _alertsEnabled = true;
+      markers.removeWhere(
+        (marker) => marker.markerId.value.startsWith('global_alert_'),
+      );
+      for (final report in reports) {
+        if (report.latitude == 0 || report.longitude == 0) continue;
+        markers.add(
+          Marker(
+            markerId: MarkerId(
+              'global_alert_${report.id ?? '${report.latitude}_${report.longitude}'}',
+            ),
+            position: LatLng(report.latitude, report.longitude),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueOrange,
+            ),
+            infoWindow: InfoWindow(
+              title: _reportTypeLabel(report.type),
+              snippet:
+                  report.locationAddress ??
+                  report.locationLabel ??
+                  'Signalement actif',
+            ),
+          ),
+        );
+      }
+    });
+  }
+
+  String _reportTypeLabel(String type) {
+    return switch (type) {
+      'embouteillage' => 'Embouteillage',
+      'accident' => 'Accident',
+      'trou' => 'Route abimee',
+      'inondation' => 'Inondation',
+      'danger' => 'Danger',
+      _ => 'Route deconseillee',
+    };
   }
 
   @override
@@ -1133,186 +1228,235 @@ class _IteneraireState extends State<Iteneraire> {
     }
 
     final body =
-          isMapInitializing
-              ? const Column(
-                children: [
-                  NetworkStatusBanner(),
-                  Expanded(child: Center(child: CircularProgressIndicator())),
-                ],
-              )
-              : routeErrorMessage != null
-              ? Column(
-                children: [
-                  const NetworkStatusBanner(),
-                  Expanded(
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Text(
-                          routeErrorMessage!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16),
-                        ),
+        isMapInitializing
+            ? const Column(
+              children: [
+                NetworkStatusBanner(),
+                Expanded(child: Center(child: CircularProgressIndicator())),
+              ],
+            )
+            : routeErrorMessage != null
+            ? Column(
+              children: [
+                const NetworkStatusBanner(),
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        routeErrorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 16),
                       ),
                     ),
                   ),
-                ],
-              )
-              : Column(
-                children: [
-                  if (!widget.embedded) const NetworkStatusBanner(),
-                  Expanded(
-                    child: SizedBox(
-                      height: height,
-                      width: width,
-                      child: Stack(
-                        children: [
-                          GoogleMap(
-                            initialCameraPosition: CameraPosition(
-                              target: center,
-                              zoom: 12,
-                            ),
-                            style: _botRoadMapStyle,
-                            onMapCreated: (controller) {
-                              mapController = controller;
-                              if (bounds != null) {
-                                controller
-                                    .animateCamera(
-                                      CameraUpdate.newLatLngBounds(bounds!, 50),
-                                    )
-                                    .then((_) {
-                                      networkStatusService.markOnline();
-                                    })
-                                    .catchError((error) {
-                                      networkStatusService.markOffline();
-                                      Setting.showMessage(
-                                        'login_error'.tr,
-                                        'itinerary_map_error'.tr,
-                                      );
-                                      printDebug(
-                                        'Erreur lors du cadrage initial de la carte: $error',
-                                      );
-                                    });
-                              }
-                            },
-                            markers: markers,
-                            polylines: polylines,
-                            myLocationEnabled: currentPosition != null,
-                            myLocationButtonEnabled: !widget.embedded,
-                            zoomControlsEnabled: !widget.embedded,
-                            zoomGesturesEnabled: true,
-                            scrollGesturesEnabled: true,
-                            rotateGesturesEnabled: true,
-                            tiltGesturesEnabled: true,
-                            mapToolbarEnabled: false,
-                            mapType: MapType.normal,
-                            padding: EdgeInsets.only(
-                              top: widget.embedded ? controlsTop : 0,
-                              bottom: widget.embedded ? height * 0.32 : height * 0.24,
-                            ),
+                ),
+              ],
+            )
+            : Column(
+              children: [
+                if (!widget.embedded) const NetworkStatusBanner(),
+                Expanded(
+                  child: SizedBox(
+                    height: height,
+                    width: width,
+                    child: Stack(
+                      children: [
+                        GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: center,
+                            zoom: 12,
                           ),
-                          Positioned(
-                            right: 16,
-                            bottom: height * 0.32,
-                            child: FloatingActionButton(
-                              heroTag: 'recenter',
-                              onPressed: _recenterMap,
-                              backgroundColor: AppColors.surfaceElevated,
-                              elevation: 0,
-                              child: Icon(
-                                LucideIcons.maximize2,
-                                color: AppColors.primary,
-                              ),
-                            ),
+                          style: _botRoadMapStyle,
+                          onMapCreated: (controller) {
+                            mapController = controller;
+                            if (bounds != null) {
+                              controller
+                                  .animateCamera(
+                                    CameraUpdate.newLatLngBounds(bounds!, 50),
+                                  )
+                                  .then((_) {
+                                    networkStatusService.markOnline();
+                                  })
+                                  .catchError((error) {
+                                    networkStatusService.markOffline();
+                                    Setting.showMessage(
+                                      'login_error'.tr,
+                                      'itinerary_map_error'.tr,
+                                    );
+                                    printDebug(
+                                      'Erreur lors du cadrage initial de la carte: $error',
+                                    );
+                                  });
+                            }
+                          },
+                          markers: markers,
+                          polylines: polylines,
+                          trafficEnabled: _trafficEnabled,
+                          myLocationEnabled: currentPosition != null,
+                          myLocationButtonEnabled: !widget.embedded,
+                          zoomControlsEnabled: true,
+                          zoomGesturesEnabled: true,
+                          scrollGesturesEnabled: true,
+                          rotateGesturesEnabled: true,
+                          tiltGesturesEnabled: true,
+                          mapToolbarEnabled: false,
+                          mapType: MapType.normal,
+                          padding: EdgeInsets.only(
+                            top: widget.embedded ? controlsTop : 0,
+                            bottom:
+                                widget.embedded ? height * 0.32 : height * 0.24,
                           ),
-                          Positioned(
-                            top: controlsTop,
-                            left: 16,
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  isLoadingRouteMode
-                                      ? null
-                                      : _showRouteModeSheet,
-                              icon: const Icon(Icons.tune),
-                              label: Text(
-                                isLoadingRouteMode
-                                    ? 'Calcul...'
-                                    : _routeModeLabel(
-                                      widget.route?.mode ?? 'fast',
-                                    ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.surfaceElevated,
-                                foregroundColor: AppColors.textPrimary,
+                        ),
+                        Positioned(
+                          right: 16,
+                          bottom: height * 0.32,
+                          child: Column(
+                            children: [
+                              if (widget.embedded) ...[
+                                FloatingActionButton.small(
+                                  heroTag: 'fullscreen_route',
+                                  onPressed: _openFullscreenMap,
+                                  backgroundColor: AppColors.primary,
+                                  elevation: 0,
+                                  child: const Icon(
+                                    LucideIcons.maximize2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                              FloatingActionButton.small(
+                                heroTag:
+                                    widget.embedded
+                                        ? 'traffic_embedded'
+                                        : 'traffic_fullscreen',
+                                onPressed: _toggleTraffic,
+                                backgroundColor:
+                                    _trafficEnabled
+                                        ? AppColors.warning
+                                        : AppColors.surfaceElevated,
                                 elevation: 0,
-                                side: const BorderSide(
-                                  color: AppColors.divider,
+                                child: Icon(
+                                  LucideIcons.trafficCone,
+                                  color:
+                                      _trafficEnabled
+                                          ? Colors.white
+                                          : AppColors.textSecondary,
                                 ),
                               ),
-                            ),
-                          ),
-                          Positioned(
-                            top: controlsTop,
-                            right: 16,
-                            child: ElevatedButton.icon(
-                              onPressed: isReporting ? null : _showReportSheet,
-                              icon: const Icon(Icons.report_problem_outlined),
-                              label: Text(
-                                isReporting ? 'Envoi...' : 'Signaler',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.error,
-                                foregroundColor: Colors.white,
+                              const SizedBox(height: 8),
+                              FloatingActionButton.small(
+                                heroTag:
+                                    widget.embedded
+                                        ? 'alerts_embedded'
+                                        : 'alerts_fullscreen',
+                                onPressed: _toggleAlerts,
+                                backgroundColor:
+                                    _alertsEnabled
+                                        ? AppColors.error
+                                        : AppColors.surfaceElevated,
                                 elevation: 0,
+                                child: Icon(
+                                  LucideIcons.triangleAlert,
+                                  color:
+                                      _alertsEnabled
+                                          ? Colors.white
+                                          : AppColors.textSecondary,
+                                ),
                               ),
+                              const SizedBox(height: 8),
+                              FloatingActionButton.small(
+                                heroTag:
+                                    widget.embedded
+                                        ? 'recenter_embedded'
+                                        : 'recenter_fullscreen',
+                                onPressed: _recenterMap,
+                                backgroundColor: AppColors.surfaceElevated,
+                                elevation: 0,
+                                child: const Icon(
+                                  LucideIcons.locateFixed,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          top: controlsTop,
+                          left: 16,
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                isLoadingRouteMode ? null : _showRouteModeSheet,
+                            icon: const Icon(Icons.tune),
+                            label: Text(
+                              isLoadingRouteMode
+                                  ? 'Calcul...'
+                                  : _routeModeLabel(
+                                    widget.route?.mode ?? 'fast',
+                                  ),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.surfaceElevated,
+                              foregroundColor: AppColors.textPrimary,
+                              elevation: 0,
+                              minimumSize: const Size(96, 44),
+                              maximumSize: const Size(150, 48),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              side: const BorderSide(color: AppColors.divider),
                             ),
                           ),
-                          Positioned(
-                            top: controlsTop + 52,
-                            right: 16,
-                            child: ElevatedButton.icon(
-                              onPressed:
-                                  isLoadingAlternative
-                                      ? null
-                                      : _showSaferAlternative,
-                              icon: const Icon(Icons.alt_route),
-                              label: Text(
+                        ),
+                        Positioned(
+                          top: controlsTop,
+                          right: 16,
+                          child: ElevatedButton.icon(
+                            onPressed:
                                 isLoadingAlternative
-                                    ? 'Recherche...'
-                                    : 'Alternative',
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shadowColor: AppColors.glow,
-                              ),
+                                    ? null
+                                    : _showSaferAlternative,
+                            icon: const Icon(Icons.alt_route),
+                            label: Text(
+                              isLoadingAlternative
+                                  ? 'Recherche...'
+                                  : 'Alternative',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              minimumSize: const Size(112, 44),
+                              maximumSize: const Size(160, 48),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shadowColor: AppColors.glow,
                             ),
                           ),
-                          DraggableScrollableSheet(
-                            minChildSize: 0.18,
-                            initialChildSize: 0.34,
-                            maxChildSize: 0.78,
-                            snap: true,
-                            snapSizes: const [0.18, 0.34, 0.78],
-                            builder: (context, scrollController) {
-                              return NavigationBottomSheet(
-                                route: widget.route,
-                                scrollController: scrollController,
-                                onStartNavigation:
-                                    isNavigating
-                                        ? _stopNavigation
-                                        : _startNavigation,
-                                isNavigating: isNavigating,
-                              );
-                            },
-                          ),
-                        ],
-                      ),
+                        ),
+                        DraggableScrollableSheet(
+                          minChildSize: 0.16,
+                          initialChildSize: 0.38,
+                          maxChildSize: 0.92,
+                          snap: true,
+                          snapSizes: const [0.16, 0.38, 0.92],
+                          builder: (context, scrollController) {
+                            return NavigationBottomSheet(
+                              route: widget.route,
+                              scrollController: scrollController,
+                              onReport: _showReportSheet,
+                              onStartNavigation:
+                                  isNavigating
+                                      ? _stopNavigation
+                                      : _startNavigation,
+                              isNavigating: isNavigating,
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              );
+                ),
+              ],
+            );
 
     if (widget.embedded) return body;
 
@@ -1391,6 +1535,7 @@ class NavigationBottomSheet extends StatelessWidget {
   final RoutesModel? route;
   final ScrollController? scrollController;
   final Function()? onStartNavigation;
+  final Function()? onReport;
   final bool isNavigating;
 
   const NavigationBottomSheet({
@@ -1398,6 +1543,7 @@ class NavigationBottomSheet extends StatelessWidget {
     this.route,
     this.scrollController,
     this.onStartNavigation,
+    this.onReport,
     this.isNavigating = false,
   });
 
@@ -1759,33 +1905,50 @@ class NavigationBottomSheet extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: onStartNavigation,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isNavigating ? AppColors.error : AppColors.primary,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shadowColor: AppColors.glow,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Row(
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onReport,
+                  icon: const Icon(Icons.report_problem_outlined),
+                  label: const Text('Signaler'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                    minimumSize: const Size(112, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                 ),
-                child: Text(
-                  isNavigating
-                      ? 'itinerary_stop_navigation'.tr
-                      : 'itinerary_start_navigation'.tr,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onStartNavigation,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isNavigating ? AppColors.error : AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shadowColor: AppColors.glow,
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    child: Text(
+                      isNavigating
+                          ? 'itinerary_stop_navigation'.tr
+                          : 'itinerary_start_navigation'.tr,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

@@ -1,6 +1,5 @@
 import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/ui/animations/scale_tap.dart';
-import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/ui/widgets/v2/typewriter_text.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/const/images.dart';
@@ -69,31 +68,32 @@ class AssistantEmptyState extends StatelessWidget {
                 spacing: 10,
                 runSpacing: 10,
                 alignment: WrapAlignment.center,
-                children: _suggestions.map((s) {
-                  return ScaleTap(
-                    pressedScale: AppAnimations.suggestionTapScale,
-                    onTap: () => onSuggestionTap(s),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.05),
+                children:
+                    _suggestions.map((s) {
+                      return ScaleTap(
+                        pressedScale: AppAnimations.suggestionTapScale,
+                        onTap: () => onSuggestionTap(s),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.05),
+                            ),
+                          ),
+                          child: Text(
+                            s,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        s,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               ),
             ],
           ),

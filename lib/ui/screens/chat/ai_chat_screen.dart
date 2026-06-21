@@ -33,6 +33,8 @@ import 'package:botroad/ui/widgets/v2/route_info_card.dart';
 import 'package:botroad/controllers/locations_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
 
 class AIChatScreen extends StatefulWidget {
   final ConversationsModel? conversation;
@@ -51,6 +53,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
   final TextEditingController messageController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
+  final SpeechToText _speechToText = SpeechToText();
   bool isLoading = false;
   bool isTyping = false;
   bool isSearching = false;
@@ -75,6 +78,8 @@ class _AIChatScreenState extends State<AIChatScreen> {
   late final TripHistoryService tripHistoryService;
   Position? currentPosition;
   bool _showEmptyChrome = true;
+  bool _speechEnabled = false;
+  bool _isListening = false;
   String? _latestBotStreamKey;
 
   @override
@@ -85,6 +90,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       _showEmptyChrome = false;
     }
     initGeminiService();
+    _initSpeech();
     _setupScrollListener();
     _getCurrentLocation();
   }
@@ -113,6 +119,74 @@ class _AIChatScreenState extends State<AIChatScreen> {
     routeRiskService = RouteRiskService(collection: Setting.fRoadReports);
     routingService = RoutingService(googleApiKey: AppSecrets.googleMapsApiKey);
     tripHistoryService = TripHistoryService(collection: Setting.fTripHistory);
+  }
+
+  Future<void> _initSpeech() async {
+    final enabled = await _speechToText.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        setState(() => _isListening = status == 'listening');
+      },
+      onError: (_) {
+        if (!mounted) return;
+        setState(() => _isListening = false);
+        Setting.showMessage(
+          'Microphone',
+          'La reconnaissance vocale a rencontre un probleme.',
+          Colors.red,
+        );
+      },
+    );
+    if (!mounted) return;
+    setState(() => _speechEnabled = enabled);
+  }
+
+  Future<void> _toggleListening() async {
+    if (_speechToText.isListening) {
+      await _speechToText.stop();
+      if (mounted) setState(() => _isListening = false);
+      return;
+    }
+
+    if (!_speechEnabled) {
+      await _initSpeech();
+    }
+    if (!_speechEnabled) {
+      Setting.showMessage(
+        'Microphone',
+        "La reconnaissance vocale n'est pas disponible sur cet appareil.",
+        Colors.red,
+      );
+      return;
+    }
+
+    await _speechToText.listen(
+      onResult: _onSpeechResult,
+      listenOptions: SpeechListenOptions(
+        localeId: _speechLocaleId(),
+        listenFor: const Duration(seconds: 30),
+        pauseFor: const Duration(seconds: 4),
+      ),
+    );
+    if (mounted) setState(() => _isListening = true);
+  }
+
+  void _onSpeechResult(SpeechRecognitionResult result) {
+    if (!mounted) return;
+    setState(() {
+      messageController.text = result.recognizedWords;
+      messageController.selection = TextSelection.collapsed(
+        offset: messageController.text.length,
+      );
+    });
+  }
+
+  String _speechLocaleId() {
+    return switch (Get.locale?.languageCode) {
+      'en' => 'en_US',
+      'sw' => 'sw_KE',
+      _ => 'fr_FR',
+    };
   }
 
   void _scrollToBottom() {
@@ -369,7 +443,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       if (request.intent == ChatIntentService.calculateRouteIntent &&
           navigationResult.isReadyForRouting) {
-        final rawRouteResult = await routingService.calculateRoute(
+        final routeCandidates = await routingService.calculateRoutes(
           userId: Setting.userCtrl.user.value.key,
           startLat: request.startLat!,
           startLng: request.startLng!,
@@ -377,11 +451,16 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
           destinationLng: request.destinationLng!,
           startLabel: request.startText,
           destinationLabel: request.destinationText,
+          alternatives: true,
         );
 
-        if (rawRouteResult != null) {
-          final routeResult = await routeRiskService.attachWarnings(
-            rawRouteResult,
+        if (routeCandidates.isNotEmpty) {
+          final checkedRoutes = await routeRiskService.attachWarningsToRoutes(
+            routeCandidates,
+          );
+          final routeResult = routeRiskService.chooseBestRoute(
+            checkedRoutes,
+            'fast',
           );
           final route = await _persistRouteResult(routeResult);
           if (route == null) {
@@ -789,21 +868,22 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
     if (searchQuery.isNotEmpty) {
       return query.snapshots().map((snapshot) {
-        final messages = snapshot.docs
-            .map((doc) {
-              final data = doc.data();
-              final message = MessagesModel.fromJson(data);
-              message.key = doc.id;
-              return message;
-            })
-            .where(
-              (message) =>
-                  message.content?.toLowerCase().contains(
-                    searchQuery.toLowerCase(),
-                  ) ??
-                  false,
-            )
-            .toList();
+        final messages =
+            snapshot.docs
+                .map((doc) {
+                  final data = doc.data();
+                  final message = MessagesModel.fromJson(data);
+                  message.key = doc.id;
+                  return message;
+                })
+                .where(
+                  (message) =>
+                      message.content?.toLowerCase().contains(
+                        searchQuery.toLowerCase(),
+                      ) ??
+                      false,
+                )
+                .toList();
 
         _syncMessagesFromStream(messages);
 
@@ -812,12 +892,13 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     }
 
     return query.snapshots().map((snapshot) {
-      final messages = snapshot.docs.map((doc) {
-        final data = doc.data();
-        final message = MessagesModel.fromJson(data);
-        message.key = doc.id;
-        return message;
-      }).toList();
+      final messages =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+            final message = MessagesModel.fromJson(data);
+            message.key = doc.id;
+            return message;
+          }).toList();
 
       _syncMessagesFromStream(
         messages,
@@ -905,7 +986,16 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
             return Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (showMicButton)
+                if (showMicButton && _speechEnabled)
+                  IconButton(
+                    icon: Icon(
+                      _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                    ),
+                    color:
+                        _isListening ? AppColors.primary : AppColors.textMuted,
+                    onPressed: isLoading ? null : _toggleListening,
+                  ),
+                if (showMicButton && !_speechEnabled)
                   IconButton(
                     icon: const Icon(Icons.mic_none_rounded),
                     color: AppColors.textMuted,
@@ -1212,6 +1302,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
   @override
   void dispose() {
+    _speechToText.cancel();
     messageController.dispose();
     searchController.dispose();
     scrollController.dispose();

@@ -1,5 +1,4 @@
 import 'package:botroad/bd/columns.dart';
-import 'package:botroad/utils/Setting.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserModel {
@@ -32,9 +31,6 @@ class UserModel {
   UserModel.fromJson(dynamic map)
     : key = map[BDColumnNames.User_key],
       email = map[BDColumnNames.User_email],
-      password = Setting.encrypt.decrypt(
-        map[BDColumnNames.User_password] ?? "",
-      ),
       google_id = map[BDColumnNames.User_google_id],
       nom = map[BDColumnNames.User_nom],
       date_create =
@@ -77,7 +73,6 @@ class UserModel {
     return {
       BDColumnNames.User_key: key,
       BDColumnNames.User_email: email,
-      BDColumnNames.User_password: Setting.encrypt.encrypt(password ?? ""),
       BDColumnNames.User_google_id: google_id,
       BDColumnNames.User_nom: nom,
       BDColumnNames.User_date_create:

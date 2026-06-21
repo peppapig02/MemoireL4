@@ -1,5 +1,4 @@
 import 'package:botroad/ui/animations/app_animations.dart';
-import 'package:botroad/ui/animations/scale_tap.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
@@ -45,15 +44,16 @@ class _TextFieldCustumState extends State<TextFieldCustum> {
       curve: AppAnimations.ease,
       decoration: BoxDecoration(
         borderRadius: AppTokens.borderRadiusInput,
-        boxShadow: _focused
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  blurRadius: 12,
-                  spreadRadius: 0,
-                ),
-              ]
-            : null,
+        boxShadow:
+            _focused
+                ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    spreadRadius: 0,
+                  ),
+                ]
+                : null,
       ),
       child: SizedBox(
         height: AppTokens.inputHeight,

@@ -1,4 +1,3 @@
-import 'package:botroad/controllers/user_controller.dart';
 import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/ui/screens/auth/pages/login.dart';
 import 'package:botroad/ui/screens/auth/pages/register.dart';
@@ -31,6 +30,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     _tabController.dispose();
     super.dispose();
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -233,9 +233,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                           ),
                       SizedBox(height: height / 50),
                       Text(
-                        'auth_version'.trParams({
-                          'version': Setting.version,
-                        }),
+                        'auth_version'.trParams({'version': Setting.version}),
                       ),
                     ],
                   ),
@@ -262,30 +260,30 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 ],
               ),
               child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TabBar(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TabBar(
+                    controller: _tabController,
+                    indicatorColor: AppColors.primary,
+                    labelColor: AppColors.textPrimary,
+                    unselectedLabelColor: AppColors.textMuted,
+                    dividerColor: Colors.white.withValues(alpha: 0.05),
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold),
+                    tabs: [
+                      Tab(text: 'auth_login_tab'.tr),
+                      Tab(text: 'auth_register_tab'.tr),
+                    ],
+                  ),
+                  SizedBox(
+                    height: height / 2.4,
+                    child: TabBarView(
                       controller: _tabController,
-                      indicatorColor: AppColors.primary,
-                      labelColor: AppColors.textPrimary,
-                      unselectedLabelColor: AppColors.textMuted,
-                      dividerColor: Colors.white.withValues(alpha: 0.05),
-                      labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                      tabs: [
-                        Tab(text: 'auth_login_tab'.tr),
-                        Tab(text: 'auth_register_tab'.tr),
-                      ],
+                      physics: const PageScrollPhysics(),
+                      children: const [LoginScreen(), RegisterScreen()],
                     ),
-                    SizedBox(
-                      height: height / 2.4,
-                      child: TabBarView(
-                        controller: _tabController,
-                        physics: const PageScrollPhysics(),
-                        children: const [LoginScreen(), RegisterScreen()],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

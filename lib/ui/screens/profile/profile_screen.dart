@@ -50,7 +50,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final savedCar = _storage.read(_carNameKey) as String?;
     _carNameController.text =
         savedCar?.trim().isNotEmpty == true ? savedCar! : 'car_default_name'.tr;
-    _selectedMode = (_storage.read(_carModeKey) as String?) ?? _drivingModes.first;
+    _selectedMode =
+        (_storage.read(_carModeKey) as String?) ?? _drivingModes.first;
     _dataFuture = _loadData();
   }
 
@@ -88,7 +89,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     await _storage.write(_carNameKey, name);
     await _storage.write(_carModeKey, _selectedMode);
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
     showSuccessOverlay(context);
   }
 
@@ -107,8 +109,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('drawer_choose_language'.tr,
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'drawer_choose_language'.tr,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
             ...[
               ('fr', 'language_french'.tr),
@@ -154,13 +158,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final data = snapshot.data ?? const _ProfileData();
 
             return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20, widget.embedded ? 16 : 0, 20, 120),
+              padding: EdgeInsets.fromLTRB(
+                20,
+                widget.embedded ? 16 : 0,
+                20,
+                120,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (widget.embedded)
-                    Text('Profil',
-                        style: theme.textTheme.displayLarge?.copyWith(fontSize: 28)),
+                    Text(
+                      'Profil',
+                      style: theme.textTheme.displayLarge?.copyWith(
+                        fontSize: 28,
+                      ),
+                    ),
                   if (widget.embedded) const SizedBox(height: 20),
 
                   // Carte utilisateur
@@ -191,10 +204,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user.nom ?? 'BotRoad',
-                                  style: theme.textTheme.titleMedium),
-                              Text(user.email ?? '',
-                                  style: theme.textTheme.bodySmall),
+                              Text(
+                                user.nom ?? 'BotRoad',
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              Text(
+                                user.email ?? '',
+                                style: theme.textTheme.bodySmall,
+                              ),
                             ],
                           ),
                         ),
@@ -230,51 +247,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'car_title'.tr,
                       initiallyExpanded: true,
                       child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _carNameController,
-                          decoration: InputDecoration(
-                            labelText: 'car_vehicle_name'.tr,
-                            prefixIcon: const Icon(LucideIcons.car),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
+                            controller: _carNameController,
+                            decoration: InputDecoration(
+                              labelText: 'car_vehicle_name'.tr,
+                              prefixIcon: const Icon(LucideIcons.car),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          value: _selectedMode,
-                          dropdownColor: AppColors.surface,
-                          items: _drivingModes
-                              .map((m) => DropdownMenuItem(
-                                    value: m,
-                                    child: Text(m.tr),
-                                  ))
-                              .toList(),
-                          decoration: InputDecoration(
-                            labelText: 'car_driving_mode'.tr,
-                            prefixIcon: const Icon(LucideIcons.settings),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            initialValue: _selectedMode,
+                            dropdownColor: AppColors.surface,
+                            items:
+                                _drivingModes
+                                    .map(
+                                      (m) => DropdownMenuItem(
+                                        value: m,
+                                        child: Text(m.tr),
+                                      ),
+                                    )
+                                    .toList(),
+                            decoration: InputDecoration(
+                              labelText: 'car_driving_mode'.tr,
+                              prefixIcon: const Icon(LucideIcons.settings),
+                            ),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedMode = v);
+                            },
                           ),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _selectedMode = v);
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            _Stat(label: 'car_recent_trips'.tr,
-                                value: '${data.trips.length}'),
-                            const SizedBox(width: 12),
-                            _Stat(label: 'car_reports'.tr,
-                                value: '${data.reports.length}'),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        PrimaryButton(
-                          label: 'car_save'.tr,
-                          glowing: false,
-                          onPressed: _saveCarPrefs,
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              _Stat(
+                                label: 'car_recent_trips'.tr,
+                                value: '${data.trips.length}',
+                              ),
+                              const SizedBox(width: 12),
+                              _Stat(
+                                label: 'car_reports'.tr,
+                                value: '${data.reports.length}',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          PrimaryButton(
+                            label: 'car_save'.tr,
+                            glowing: false,
+                            onPressed: _saveCarPrefs,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   if (data.trips.isNotEmpty) ...[
@@ -283,8 +307,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('car_recent_trips'.tr,
-                              style: theme.textTheme.titleMedium),
+                          Text(
+                            'car_recent_trips'.tr,
+                            style: theme.textTheme.titleMedium,
+                          ),
                           ...data.trips.map(
                             (t) => Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -304,8 +330,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('car_reports'.tr,
-                              style: theme.textTheme.titleMedium),
+                          Text(
+                            'car_reports'.tr,
+                            style: theme.textTheme.titleMedium,
+                          ),
                           ...data.reports.map(
                             (r) => Padding(
                               padding: const EdgeInsets.only(top: 8),
@@ -342,8 +370,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             contentPadding: EdgeInsets.zero,
                             leading: const Icon(LucideIcons.languages),
                             title: Text('drawer_language'.tr),
-                            subtitle: Text(AppTranslations.labelFromCode(langCode)),
-                            trailing: const Icon(LucideIcons.chevronRight, size: 18),
+                            subtitle: Text(
+                              AppTranslations.labelFromCode(langCode),
+                            ),
+                            trailing: const Icon(
+                              LucideIcons.chevronRight,
+                              size: 18,
+                            ),
                             onTap: _showLanguageSheet,
                           ),
                           ListTile(
@@ -351,10 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             leading: const Icon(LucideIcons.bell),
                             title: const Text('Notifications'),
                             subtitle: const Text('Bientôt disponible'),
-                            trailing: Switch(
-                              value: false,
-                              onChanged: null,
-                            ),
+                            trailing: Switch(value: false, onChanged: null),
                           ),
                         ],
                       ),
@@ -368,10 +398,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'profile_account_info'.tr,
                       child: Column(
                         children: [
-                          _InfoRow('profile_creation_date'.tr,
-                              user.date_create ?? 'profile_not_available'.tr),
-                          _InfoRow('profile_last_login'.tr,
-                              user.date_connexion ?? 'profile_not_available'.tr),
+                          _InfoRow(
+                            'profile_creation_date'.tr,
+                            user.date_create ?? 'profile_not_available'.tr,
+                          ),
+                          _InfoRow(
+                            'profile_last_login'.tr,
+                            user.date_connexion ?? 'profile_not_available'.tr,
+                          ),
                           _InfoRow(
                             'profile_account_status'.tr,
                             user.is_active == true
@@ -391,14 +425,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('about_project_body'.tr,
-                              style: theme.textTheme.bodyMedium),
-                          const SizedBox(height: 12),
-                          Text('about_future_body'.tr,
-                              style: theme.textTheme.bodyMedium),
+                          Text(
+                            'about_project_body'.tr,
+                            style: theme.textTheme.bodyMedium,
+                          ),
                           const SizedBox(height: 12),
                           Text(
-                            'auth_version'.trParams({'version': Setting.version}),
+                            'about_future_body'.tr,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'auth_version'.trParams({
+                              'version': Setting.version,
+                            }),
                             style: theme.textTheme.bodySmall,
                           ),
                         ],
@@ -448,10 +488,12 @@ class _Stat extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.primary,
-                    )),
+            Text(
+              value,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
+            ),
             Text(label, style: Theme.of(context).textTheme.bodySmall),
           ],
         ),

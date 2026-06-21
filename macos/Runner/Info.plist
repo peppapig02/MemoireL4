@@ -24,6 +24,10 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BotRoad utilise le microphone pour recevoir vos commandes vocales.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BotRoad convertit votre voix en texte pour rechercher un itineraire.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>

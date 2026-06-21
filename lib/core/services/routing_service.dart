@@ -65,6 +65,8 @@ class RoutingService {
           'destination': '$destinationLat,$destinationLng',
           'mode': 'driving',
           'language': 'fr',
+          'departure_time': 'now',
+          'traffic_model': 'best_guess',
           'alternatives': alternatives ? 'true' : 'false',
           'key': googleApiKey,
           if (waypoints.isNotEmpty)
@@ -143,6 +145,8 @@ class RoutingService {
             'destination': '$destinationLat,$destinationLng',
             'mode': 'driving',
             'language': 'fr',
+            'departure_time': 'now',
+            'traffic_model': 'best_guess',
             'alternatives': 'false',
             'waypoints': '${waypoint['latitude']},${waypoint['longitude']}',
             'key': googleApiKey,
@@ -279,7 +283,10 @@ class RoutingService {
               .toList();
 
       final distanceKm = _totalLegValue(legs, 'distance') / 1000;
-      final durationMinutes = _totalLegValue(legs, 'duration') / 60;
+      final trafficDuration = _totalLegValue(legs, 'duration_in_traffic');
+      final normalDuration = _totalLegValue(legs, 'duration');
+      final durationMinutes =
+          (trafficDuration > 0 ? trafficDuration : normalDuration) / 60;
       final segments = _buildSegmentsFromLegs(legs);
 
       return RouteResult(

@@ -312,6 +312,7 @@ class UserController extends GetxController {
       }
 
       this.user.value = res;
+      await _removeLegacyPasswordField(user.user!.uid);
       openStreams();
 
       saveUserLocal();
@@ -372,11 +373,13 @@ class UserController extends GetxController {
     try {
       loading.value = true;
       loading.refresh();
+      final password = user.value.password ?? "";
       var r = await Setting.auth!.createUserWithEmailAndPassword(
         email: user.value.email ?? "",
-        password: user.value.password ?? "",
+        password: password,
       );
       Setting.user = r.user;
+      user.value.password = null;
       await Setting.fUser.doc(r.user!.uid).set(user.value.toJson());
       var res2 = await Setting.fUser.doc(r.user!.uid).get();
       user.value = UserModel.fromJson(res2.data() as Map<String, dynamic>);
@@ -459,6 +462,7 @@ class UserController extends GetxController {
       }
 
       if (res != null) {
+        await _removeLegacyPasswordField(userCredential.user!.uid);
         openStreams();
         user.value = res;
         saveUserLocal();
@@ -493,6 +497,16 @@ class UserController extends GetxController {
       saveUserLocal(map: map);
     }
     return true;
+  }
+
+  Future<void> _removeLegacyPasswordField(String userId) async {
+    try {
+      await Setting.fUser.doc(userId).update({
+        BDColumnNames.User_password: FieldValue.delete(),
+      });
+    } catch (error) {
+      printDebug("legacy password cleanup skipped::$error");
+    }
   }
 
   Future<bool> saveUserLocal({Map? map}) async {

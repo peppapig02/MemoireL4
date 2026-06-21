@@ -33,6 +33,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
     super.initState();
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     alertsFuture = _loadAlerts();
+    RoadReportService.refreshRevision.addListener(_handleReportsChanged);
+  }
+
+  @override
+  void dispose() {
+    RoadReportService.refreshRevision.removeListener(_handleReportsChanged);
+    super.dispose();
+  }
+
+  void _handleReportsChanged() {
+    if (!mounted) return;
+    _refresh();
   }
 
   Future<void> _refresh() async {
@@ -43,7 +55,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<List<RoadReport>> _loadAlerts() async {
-    final alerts = await roadReportService.getRecentRoadReports(limit: 100);
+    final alerts = await roadReportService.getActiveRoadReports(limit: 100);
     currentPosition = await _getCurrentPositionIfAllowed();
     return _sortAlertsByDistance(alerts);
   }
@@ -142,9 +154,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   void _closeBottomSheet() {
-    if (Get.isBottomSheetOpen == true) {
-      Get.back();
-    }
+    Navigator.of(Get.overlayContext ?? context, rootNavigator: true).maybePop();
   }
 
   Future<void> _markHandled(RoadReport report) async {
@@ -419,9 +429,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   List<RoadReport> _mapAlerts(List<RoadReport> alerts) {
     return alerts.where((alert) {
-      final hasPosition = alert.latitude != 0 || alert.longitude != 0;
-      final hasVisibleStatus = alert.isActive || alert.status == 'handled';
-      return hasPosition && hasVisibleStatus && alert.status != 'deleted';
+      final hasPosition = alert.latitude != 0 && alert.longitude != 0;
+      return hasPosition && alert.isActive && alert.status != 'deleted';
     }).toList();
   }
 
@@ -543,7 +552,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
                         color: color.withValues(alpha: 0.14),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(LucideIcons.triangleAlert, color: color, size: 22),
+                      child: Icon(
+                        LucideIcons.triangleAlert,
+                        color: color,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -557,13 +570,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           const SizedBox(height: 4),
                           _StatusPill(
                             label: _formatStatus(alert.status),
-                            color: isHandled ? AppColors.success : AppColors.warning,
+                            color:
+                                isHandled
+                                    ? AppColors.success
+                                    : AppColors.warning,
                           ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(LucideIcons.x, color: AppColors.textMuted),
+                      icon: const Icon(
+                        LucideIcons.x,
+                        color: AppColors.textMuted,
+                      ),
                       onPressed: _closeBottomSheet,
                     ),
                   ],
@@ -878,7 +897,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   Expanded(
                     child: Text(
                       'Signalements',
-                      style: theme.textTheme.displayLarge?.copyWith(fontSize: 28),
+                      style: theme.textTheme.displayLarge?.copyWith(
+                        fontSize: 28,
+                      ),
                     ),
                   ),
                   FutureBuilder<List<RoadReport>>(
@@ -947,8 +968,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
                             sliver: SliverList.separated(
                               itemCount: filteredAlerts.length,
-                              separatorBuilder: (_, __) =>
-                                  const SizedBox(height: 10),
+                              separatorBuilder:
+                                  (_, __) => const SizedBox(height: 10),
                               itemBuilder: (context, index) {
                                 return _buildAlertCard(filteredAlerts[index]);
                               },
@@ -1056,6 +1077,34 @@ class AlertsMapScreen extends StatefulWidget {
 
 class _AlertsMapScreenState extends State<AlertsMapScreen> {
   GoogleMapController? mapController;
+  bool canShowUserLocation = false;
+  bool trafficEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLocationPermission();
+  }
+
+  Future<void> _checkLocationPermission() async {
+    final permission = await Geolocator.checkPermission();
+    if (!mounted) return;
+    setState(() {
+      canShowUserLocation =
+          permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+    });
+  }
+
+  void _toggleTraffic() {
+    setState(() => trafficEnabled = !trafficEnabled);
+    Setting.showMessage(
+      'Trafic',
+      trafficEnabled
+          ? 'Couche des embouteillages activee.'
+          : 'Couche des embouteillages masquee.',
+    );
+  }
 
   String _formatLocationReference(RoadReport alert) {
     final label = alert.locationLabel?.trim();
@@ -1081,12 +1130,6 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
       return 'Sur la route $route';
     }
     return 'Reference precise non renseignee';
-  }
-
-  void _closeBottomSheet() {
-    if (Get.isBottomSheetOpen == true) {
-      Get.back();
-    }
   }
 
   LatLngBounds get _bounds {
@@ -1206,7 +1249,12 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                   ),
                   IconButton(
                     icon: const Icon(LucideIcons.x, color: AppColors.textMuted),
-                    onPressed: _closeBottomSheet,
+                    onPressed: () {
+                      Navigator.of(
+                        Get.overlayContext ?? context,
+                        rootNavigator: true,
+                      ).maybePop();
+                    },
                   ),
                 ],
               ),
@@ -1272,6 +1320,17 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            tooltip:
+                trafficEnabled
+                    ? 'Masquer les embouteillages'
+                    : 'Afficher les embouteillages',
+            icon: Icon(
+              LucideIcons.trafficCone,
+              color: trafficEnabled ? AppColors.warning : AppColors.textMuted,
+            ),
+            onPressed: _toggleTraffic,
+          ),
+          IconButton(
             tooltip: 'Recentrer',
             icon: const Icon(Icons.center_focus_strong),
             onPressed: _fitBounds,
@@ -1283,12 +1342,13 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
           GoogleMap(
             initialCameraPosition: CameraPosition(target: _center, zoom: 12),
             markers: _markers,
+            trafficEnabled: trafficEnabled,
             onMapCreated: (controller) {
               mapController = controller;
               WidgetsBinding.instance.addPostFrameCallback((_) => _fitBounds());
             },
-            myLocationEnabled: true,
-            myLocationButtonEnabled: true,
+            myLocationEnabled: canShowUserLocation,
+            myLocationButtonEnabled: canShowUserLocation,
             zoomControlsEnabled: true,
             zoomGesturesEnabled: true,
             scrollGesturesEnabled: true,
@@ -1386,16 +1446,13 @@ class _MapDetailRow extends StatelessWidget {
             width: 90,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -1471,8 +1528,8 @@ class _StatTile extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                      ),
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1569,9 +1626,9 @@ class _DetailSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           ...children,
@@ -1601,9 +1658,9 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -1630,10 +1687,7 @@ class _VoteChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color:
-            filled
-                ? color.withValues(alpha: 0.14)
-                : AppColors.background,
+        color: filled ? color.withValues(alpha: 0.14) : AppColors.background,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: filled ? color.withValues(alpha: 0.5) : AppColors.divider,

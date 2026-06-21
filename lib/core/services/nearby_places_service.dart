@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:dio/dio.dart';
 import 'package:flutter_google_places_sdk/flutter_google_places_sdk.dart';
 
 import '../models/nearby_place.dart';
@@ -8,6 +9,7 @@ class NearbyPlacesService {
   final String apiKey;
   final List<String> countries;
   FlutterGooglePlacesSdk? _placesSdk;
+  final Dio _dio = Dio();
 
   NearbyPlacesService({required this.apiKey, this.countries = const ['CD']});
 
@@ -125,6 +127,31 @@ class NearbyPlacesService {
       return aDistance.compareTo(bDistance);
     });
     return candidates.isEmpty ? null : candidates.first;
+  }
+
+  Future<String?> reverseGeocodeAddress({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        'https://maps.googleapis.com/maps/api/geocode/json',
+        queryParameters: {
+          'latlng': '$latitude,$longitude',
+          'language': 'fr',
+          'key': apiKey,
+        },
+      );
+      final results = response.data?['results'];
+      if (results is! List || results.isEmpty) {
+        return null;
+      }
+      final first = results.first;
+      if (first is! Map) return null;
+      return first['formatted_address']?.toString();
+    } catch (_) {
+      return null;
+    }
   }
 
   LatLngBounds _buildLocationBias(double latitude, double longitude) {

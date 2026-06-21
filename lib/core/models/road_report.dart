@@ -165,10 +165,11 @@ class RoadReport {
     if (status == 'expired' || status == 'deleted') {
       return false;
     }
-    if (expiresAt == null) {
-      return true;
+    final expiration = expiresAt ?? createdAt?.add(const Duration(hours: 48));
+    if (expiration == null) {
+      return false;
     }
-    return expiresAt!.isAfter(DateTime.now());
+    return expiration.isAfter(DateTime.now());
   }
 
   int get confirmationCount => confirmedBy.length;

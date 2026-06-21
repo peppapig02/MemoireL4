@@ -24,7 +24,7 @@ class MainShell extends StatelessWidget {
     return Obx(
       () => Scaffold(
         backgroundColor: AppColors.background,
-        extendBody: true,
+        extendBody: false,
         body: IndexedStack(
           index: nav.currentIndex.value,
           children: const [

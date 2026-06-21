@@ -156,8 +156,47 @@ class RouteRiskService {
       'safe' => (risk * 1000) + (route.duration * 1.5) + route.distance,
       'balanced' =>
         (risk * 450) + (route.duration * 2.5) + (route.distance * 4),
-      _ => route.duration + (route.distance * 0.5),
+      _ =>
+        route.duration +
+            (route.distance * 0.2) +
+            _trafficAndBlockagePenalty(route),
     };
+  }
+
+  double _trafficAndBlockagePenalty(RouteResult route) {
+    var penaltyMinutes = 0.0;
+    for (final warning in route.warnings) {
+      final type = warning['type']?.toString();
+      final severity = warning['severity']?.toString();
+      final confirmations =
+          (warning['confirmationCount'] as num?)?.toDouble() ?? 0;
+      final refutations = (warning['refutationCount'] as num?)?.toDouble() ?? 0;
+      final confidence = (1 + confirmations * 0.2 - refutations * 0.15).clamp(
+        0.4,
+        2.0,
+      );
+
+      final basePenalty = switch (type) {
+        'embouteillage' => switch (severity) {
+          'eleve' => 25.0,
+          'moyen' => 12.0,
+          _ => 5.0,
+        },
+        'accident' || 'inondation' => switch (severity) {
+          'eleve' => 20.0,
+          'moyen' => 9.0,
+          _ => 4.0,
+        },
+        'danger' || 'trou' || 'mauvaise_route' => switch (severity) {
+          'eleve' => 8.0,
+          'moyen' => 3.0,
+          _ => 1.0,
+        },
+        _ => 0.0,
+      };
+      penaltyMinutes += basePenalty * confidence;
+    }
+    return penaltyMinutes;
   }
 
   double _severityWeight(String? severity) {
