@@ -931,23 +931,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   }
 
                   final alerts = snapshot.data ?? const <RoadReport>[];
-                  if (alerts.isEmpty) {
-                    return _buildEmptyState(
-                      message: 'Aucun signalement pour le moment.',
-                    );
-                  }
-
                   final filteredAlerts = _applyFilters(alerts);
 
                   return RefreshIndicator(
                     onRefresh: _refresh,
                     color: AppColors.primary,
                     child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       slivers: [
                         SliverToBoxAdapter(child: _buildStats(alerts)),
-                        SliverToBoxAdapter(child: _buildFilters(alerts)),
+                        if (alerts.isNotEmpty)
+                          SliverToBoxAdapter(child: _buildFilters(alerts)),
                         SliverPadding(
-                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                           sliver: SliverToBoxAdapter(
                             child: Text(
                               'Signalements (${filteredAlerts.length})',
@@ -960,7 +956,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
                             hasScrollBody: false,
                             child: _buildEmptyState(
                               message:
-                                  'Aucun signalement ne correspond aux filtres.',
+                                  alerts.isEmpty
+                                      ? 'Aucun signalement pour le moment.'
+                                      : 'Aucun signalement ne correspond aux filtres.',
                             ),
                           )
                         else

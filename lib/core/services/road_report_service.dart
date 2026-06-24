@@ -76,7 +76,8 @@ class RoadReportService {
       await doc.update({'id': doc.id});
       notifyReportsChanged();
       return doc.id;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('saveRoadReport failed: $error');
       return null;
     }
   }
@@ -96,8 +97,21 @@ class RoadReportService {
       return snapshot.docs
           .map((doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id))
           .toList();
-    } catch (_) {
-      return const [];
+    } catch (error) {
+      debugPrint('getRoadReportsForUser ordered query failed: $error');
+      try {
+        final snapshot =
+            await collection
+                .where('userId', isEqualTo: userId)
+                .limit(limit)
+                .get();
+        final reports = _docsToReports(snapshot.docs);
+        _sortNewestFirst(reports);
+        return reports;
+      } catch (fallbackError) {
+        debugPrint('getRoadReportsForUser fallback failed: $fallbackError');
+        return const [];
+      }
     }
   }
 
@@ -109,27 +123,21 @@ class RoadReportService {
               .limit(limit)
               .get();
 
-      return snapshot.docs
-          .map((doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id))
-          .where((report) => report.isActive)
-          .toList();
-    } catch (_) {
+      return _docsToReports(
+        snapshot.docs,
+      ).where((report) => report.isActive).toList();
+    } catch (error) {
+      debugPrint('getActiveRoadReports ordered query failed: $error');
       try {
         final snapshot = await collection.limit(limit).get();
         final reports =
-            snapshot.docs
-                .map(
-                  (doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id),
-                )
-                .where((report) => report.isActive)
-                .toList();
-        reports.sort((a, b) {
-          final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return bDate.compareTo(aDate);
-        });
+            _docsToReports(
+              snapshot.docs,
+            ).where((report) => report.isActive).toList();
+        _sortNewestFirst(reports);
         return reports;
-      } catch (_) {
+      } catch (fallbackError) {
+        debugPrint('getActiveRoadReports fallback failed: $fallbackError');
         return const [];
       }
     }
@@ -143,25 +151,16 @@ class RoadReportService {
               .limit(limit)
               .get();
 
-      return snapshot.docs
-          .map((doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id))
-          .toList();
-    } catch (_) {
+      return _docsToReports(snapshot.docs);
+    } catch (error) {
+      debugPrint('getRecentRoadReports ordered query failed: $error');
       try {
         final snapshot = await collection.limit(limit).get();
-        final reports =
-            snapshot.docs
-                .map(
-                  (doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id),
-                )
-                .toList();
-        reports.sort((a, b) {
-          final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-          return bDate.compareTo(aDate);
-        });
+        final reports = _docsToReports(snapshot.docs);
+        _sortNewestFirst(reports);
         return reports;
-      } catch (_) {
+      } catch (fallbackError) {
+        debugPrint('getRecentRoadReports fallback failed: $fallbackError');
         return const [];
       }
     }
@@ -287,6 +286,22 @@ class RoadReportService {
     }
     return 'moyen';
   }
+}
+
+List<RoadReport> _docsToReports(
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+) {
+  return docs
+      .map((doc) => RoadReport.fromJson(doc.data()).copyWith(id: doc.id))
+      .toList();
+}
+
+void _sortNewestFirst(List<RoadReport> reports) {
+  reports.sort((a, b) {
+    final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return bDate.compareTo(aDate);
+  });
 }
 
 Set<String> _toStringSet(dynamic value) {

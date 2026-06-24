@@ -35,6 +35,10 @@ void main() {
     expect(recentReport.isActive, isTrue);
   });
 
+  test('un signalement sans date reste visible par compatibilite', () {
+    expect(report().isActive, isTrue);
+  });
+
   test('un signalement supprime ou expire reste inactif', () {
     expect(report(status: 'expired').isActive, isFalse);
     expect(report(status: 'deleted').isActive, isFalse);

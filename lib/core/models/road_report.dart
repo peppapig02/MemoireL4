@@ -167,7 +167,7 @@ class RoadReport {
     }
     final expiration = expiresAt ?? createdAt?.add(const Duration(hours: 48));
     if (expiration == null) {
-      return false;
+      return true;
     }
     return expiration.isAfter(DateTime.now());
   }

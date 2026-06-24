@@ -726,13 +726,11 @@ class _IteneraireState extends State<Iteneraire> {
                                 final type = selectedType;
                                 final severity = selectedSeverity;
                                 final comment = commentController.text.trim();
-                                Get.back(
-                                  result: {
-                                    'type': type,
-                                    'severity': severity,
-                                    'comment': comment,
-                                  },
-                                );
+                                Navigator.of(context).pop({
+                                  'type': type,
+                                  'severity': severity,
+                                  'comment': comment,
+                                });
                               },
                     ),
                   ),
