@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'dart:math' as math;
 
 import 'package:botroad/core/config/app_secrets.dart';
@@ -1229,10 +1230,10 @@ class _IteneraireState extends State<Iteneraire> {
 
     final body =
         isMapInitializing
-            ? const Column(
+            ? Column(
               children: [
-                NetworkStatusBanner(),
-                Expanded(child: Center(child: CircularProgressIndicator())),
+                const NetworkStatusBanner(),
+                Expanded(child: Center(child: WapiLoader())),
               ],
             )
             : routeErrorMessage != null

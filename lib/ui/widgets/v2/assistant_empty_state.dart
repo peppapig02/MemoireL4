@@ -82,7 +82,7 @@ class AssistantEmptyState extends StatelessWidget {
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: AppColors.divider,
                             ),
                           ),
                           child: Text(

@@ -182,8 +182,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                       ],
                     ),
                     child: Image.asset(
-                      Assets.logo_white,
-                      width: width / 4,
+                      Assets.logo_mark,
+                      width: width / 3.5,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -250,7 +250,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                border: Border.all(color: AppColors.divider),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.25),
@@ -267,7 +267,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                     indicatorColor: AppColors.primary,
                     labelColor: AppColors.textPrimary,
                     unselectedLabelColor: AppColors.textMuted,
-                    dividerColor: Colors.white.withValues(alpha: 0.05),
+                    dividerColor: AppColors.divider,
                     labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                     tabs: [
                       Tab(text: 'auth_login_tab'.tr),

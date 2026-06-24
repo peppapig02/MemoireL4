@@ -19,7 +19,7 @@ abstract final class AppTokens {
 
   // Bordures
   static Border borderSubtle = Border.all(
-    color: Colors.white.withValues(alpha: 0.05),
+    color: AppColors.divider,
     width: 1,
   );
 
@@ -37,9 +37,9 @@ abstract final class AppTokens {
   // Ombres
   static List<BoxShadow> get shadowSoft => [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.25),
-          blurRadius: 30,
-          offset: const Offset(0, 10),
+          color: Colors.black.withValues(alpha: 0.08),
+          blurRadius: 20,
+          offset: const Offset(0, 6),
         ),
       ];
 
@@ -56,7 +56,7 @@ abstract final class AppTokens {
         color: AppColors.surface,
         borderRadius: borderRadiusCard,
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppColors.divider,
           width: 1,
         ),
         boxShadow: [

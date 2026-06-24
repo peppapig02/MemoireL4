@@ -1,4 +1,5 @@
 import 'package:botroad/core/models/trip_history.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
@@ -460,7 +461,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
         future: tripsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: WapiLoader());
           }
 
           final trips = snapshot.data ?? const <TripHistory>[];

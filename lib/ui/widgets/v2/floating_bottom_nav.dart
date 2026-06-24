@@ -29,7 +29,7 @@ class FloatingBottomNav extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppTokens.borderRadiusNav,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppColors.divider),
         boxShadow: AppTokens.shadowSoft,
       ),
       child: Row(

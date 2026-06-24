@@ -1,4 +1,5 @@
 import 'package:botroad/core/models/road_report.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/core/models/trip_history.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
@@ -468,7 +469,7 @@ class _SectionCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (isLoading)
-              const Center(child: CircularProgressIndicator())
+              Center(child: WapiLoader())
             else if (children.isEmpty)
               Text(emptyMessage, style: const TextStyle(color: Colors.black54))
             else

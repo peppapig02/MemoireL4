@@ -149,7 +149,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                     indicatorColor: AppColors.primary,
                     labelColor: AppColors.primary,
                     unselectedLabelColor: AppColors.textMuted,
-                    dividerColor: Colors.white.withValues(alpha: 0.05),
+                    dividerColor: AppColors.divider,
                     tabs: const [
                       Tab(text: 'Conversations'),
                       Tab(text: 'Trajets'),
