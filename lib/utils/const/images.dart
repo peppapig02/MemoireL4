@@ -1,10 +1,4 @@
 class Assets {
-  // Branding Wapi
-  static const String logo_primary = "assets/branding/wapi-logo-primary.png";
-  static const String logo_mark = "assets/branding/wapi-logo-mark.png";
-  static const String logo_symbol = "assets/branding/wapi-symbol.png";
-
-  // Legacy
   static const String logo = "assets/images/logosf.png";
   static const String logo_white = "assets/images/botroadlogo.jpg";
   static const String logo_icon = "assets/images/icologo.png";

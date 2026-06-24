@@ -1,5 +1,4 @@
 import 'package:botroad/bd/columns.dart';
-import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/controllers/conversations_controller.dart';
 import 'package:botroad/controllers/home_controller.dart';
 import 'package:botroad/controllers/messages_controller.dart';
@@ -937,7 +936,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: const ThinkingDots(),
       ),
@@ -978,7 +977,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -1101,7 +1100,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         border:
             isUser
                 ? null
-                : Border.all(color: AppColors.divider),
+                : Border.all(color: Colors.white.withValues(alpha: 0.05)),
         boxShadow:
             isUser
                 ? [
@@ -1255,7 +1254,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 // );
 
                 if (!snapshot.hasData) {
-                  return Center(child: WapiLoader());
+                  return const Center(child: CircularProgressIndicator());
                 }
 
                 final messages = snapshot.data ?? loadedMessages;

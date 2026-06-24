@@ -317,7 +317,7 @@ class _MapTopBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.divider),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               boxShadow: AppTokens.shadowSoft,
             ),
             child: TextField(
@@ -376,7 +376,7 @@ class _IconBtn extends StatelessWidget {
                   ? AppColors.primary.withValues(alpha: 0.15)
                   : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
           boxShadow: highlight ? AppTokens.glowAccent(opacity: 0.1) : null,
         ),
         child: Icon(

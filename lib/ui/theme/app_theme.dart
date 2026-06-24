@@ -7,13 +7,13 @@ import 'package:botroad/utils/const/colors.dart';
 abstract final class AppTheme {
   static const _fontFamily = 'Sora';
 
-  static ThemeData get light {
+  static ThemeData get dark {
     final base = ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: Brightness.dark,
       fontFamily: _fontFamily,
       scaffoldBackgroundColor: AppColors.background,
-      colorScheme: const ColorScheme.light(
+      colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         onPrimary: Colors.white,
         secondary: AppColors.primary,
@@ -79,14 +79,14 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppTokens.borderRadiusCard,
-          side: const BorderSide(color: AppColors.divider),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -109,7 +109,7 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(color: AppColors.divider),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
           minimumSize: const Size.fromHeight(AppTokens.buttonHeight),
           shape: RoundedRectangleBorder(
             borderRadius: AppTokens.borderRadiusButton,
@@ -141,17 +141,17 @@ abstract final class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: AppTokens.borderRadiusInput,
-          borderSide: const BorderSide(color: AppColors.divider),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppTokens.borderRadiusInput,
-          borderSide: const BorderSide(color: AppColors.divider),
+          borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: AppTokens.borderRadiusInput,
           borderSide: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.6),
-            width: 1.5,
+            color: AppColors.primary.withValues(alpha: 0.5),
+            width: 1,
           ),
         ),
         errorBorder: OutlineInputBorder(
@@ -163,8 +163,8 @@ abstract final class AppTheme {
           vertical: 18,
         ),
       ),
-      dividerTheme: const DividerThemeData(
-        color: AppColors.divider,
+      dividerTheme: DividerThemeData(
+        color: Colors.white.withValues(alpha: 0.05),
         thickness: 1,
       ),
       bottomSheetTheme: BottomSheetThemeData(
@@ -192,7 +192,4 @@ abstract final class AppTheme {
       ),
     );
   }
-
-  // Alias pour compatibilité
-  static ThemeData get dark => light;
 }

@@ -19,9 +19,9 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'BotRoad',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.light,
-      themeMode: ThemeMode.light,
+      theme: AppTheme.dark,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       translations: AppTranslations(),
       locale: AppTranslations.getStoredLocale(),
       fallbackLocale: AppTranslations.fallback,
