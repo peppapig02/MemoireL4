@@ -231,7 +231,13 @@ class _MapTabScreenState extends State<MapTabScreen> {
         body: Stack(
           children: [
             if (route != null)
-              Iteneraire(route: route, embedded: true)
+              Iteneraire(
+                key: ValueKey(
+                  route.key ?? route.points ?? route.nom ?? route.hashCode,
+                ),
+                route: route,
+                embedded: true,
+              )
             else
               _EmptyMapView(
                 userPosition: _userPosition,

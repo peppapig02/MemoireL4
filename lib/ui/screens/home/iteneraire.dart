@@ -94,10 +94,44 @@ class _IteneraireState extends State<Iteneraire> {
   }
 
   @override
+  void didUpdateWidget(covariant Iteneraire oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_routeIdentity(oldWidget.route) == _routeIdentity(widget.route)) {
+      return;
+    }
+
+    navigationTimer?.cancel();
+    _tts.stop();
+    _navSegmentIndex = 0;
+    _lastAnnounceBucket = null;
+    setState(() {
+      isNavigating = false;
+      markers.clear();
+      polylines.clear();
+      bounds = null;
+      routeErrorMessage = null;
+      isMapInitializing = true;
+    });
+    _initializeMap().then((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _recenterMap());
+    });
+  }
+
+  @override
   void dispose() {
     navigationTimer?.cancel();
     _tts.stop();
     super.dispose();
+  }
+
+  String _routeIdentity(RoutesModel? route) {
+    return [
+      route?.key,
+      route?.nom,
+      route?.points,
+      route?.mode,
+    ].whereType<String>().join('|');
   }
 
   Future<void> _configureTts() async {
@@ -1431,11 +1465,11 @@ class _IteneraireState extends State<Iteneraire> {
                           ),
                         ),
                         DraggableScrollableSheet(
-                          minChildSize: 0.16,
+                          minChildSize: 0.22,
                           initialChildSize: 0.38,
                           maxChildSize: 0.92,
                           snap: true,
-                          snapSizes: const [0.16, 0.38, 0.92],
+                          snapSizes: const [0.22, 0.38, 0.92],
                           builder: (context, scrollController) {
                             return NavigationBottomSheet(
                               route: widget.route,

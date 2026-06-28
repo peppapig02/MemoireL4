@@ -71,6 +71,8 @@ class ChatIntentService {
 
   bool _isRouteRequest(String message) {
     return message.contains('je veux aller') ||
+        message.contains('va a') ||
+        message.contains('vas a') ||
         message.contains('aller a') ||
         message.contains('aller de') ||
         message.contains('itineraire') ||
@@ -78,7 +80,9 @@ class ChatIntentService {
         message.contains('conduis moi') ||
         message.contains('conduis-moi') ||
         message.contains('emmene moi') ||
-        message.contains('emmene-moi');
+        message.contains('emmene-moi') ||
+        message.contains('amene moi') ||
+        message.contains('amene-moi');
   }
 
   String? _extractStartText(
@@ -157,6 +161,11 @@ class ChatIntentService {
 
     final destinationPatterns = [
       RegExp(r'\bje veux aller a\s+(.+)', caseSensitive: false),
+      RegExp(r'\bva a\s+(.+)', caseSensitive: false),
+      RegExp(r'\bvas a\s+(.+)', caseSensitive: false),
+      RegExp(r'\bconduis[- ]moi a\s+(.+)', caseSensitive: false),
+      RegExp(r'\bemmene[- ]moi a\s+(.+)', caseSensitive: false),
+      RegExp(r'\bamene[- ]moi a\s+(.+)', caseSensitive: false),
       RegExp(r'\bitineraire vers\s+(.+)', caseSensitive: false),
       RegExp(r'\broute vers\s+(.+)', caseSensitive: false),
       RegExp(r'\bvers\s+(.+)', caseSensitive: false),
