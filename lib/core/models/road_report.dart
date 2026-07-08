@@ -4,6 +4,7 @@ class RoadReport {
   final String? id;
   final String? userId;
   final String? deviceId;
+  final String? eventId;
   final double latitude;
   final double longitude;
   final String? locationLabel;
@@ -28,6 +29,7 @@ class RoadReport {
     this.id,
     this.userId,
     this.deviceId,
+    this.eventId,
     required this.latitude,
     required this.longitude,
     this.locationLabel,
@@ -54,6 +56,7 @@ class RoadReport {
       id: json['id'] as String?,
       userId: json['userId'] as String?,
       deviceId: json['deviceId'] as String?,
+      eventId: json['eventId']?.toString(),
       latitude: _toDouble(json['latitude']) ?? 0,
       longitude: _toDouble(json['longitude']) ?? 0,
       locationLabel: json['locationLabel'] as String?,
@@ -84,6 +87,7 @@ class RoadReport {
       'id': id,
       'userId': userId,
       'deviceId': deviceId,
+      'eventId': eventId,
       'latitude': latitude,
       'longitude': longitude,
       'locationLabel': locationLabel,
@@ -115,6 +119,7 @@ class RoadReport {
     String? id,
     String? userId,
     String? deviceId,
+    String? eventId,
     double? latitude,
     double? longitude,
     String? locationLabel,
@@ -139,6 +144,7 @@ class RoadReport {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       deviceId: deviceId ?? this.deviceId,
+      eventId: eventId ?? this.eventId,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       locationLabel: locationLabel ?? this.locationLabel,

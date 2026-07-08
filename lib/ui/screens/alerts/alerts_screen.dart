@@ -1,4 +1,5 @@
 import 'package:botroad/core/models/road_report.dart';
+import 'package:botroad/core/services/iot_camera_sync_service.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/ui/animations/skeleton.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
@@ -27,6 +28,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   String typeFilter = 'all';
   String severityFilter = 'all';
   Position? currentPosition;
+  bool cameraSyncInProgress = false;
 
   @override
   void initState() {
@@ -239,6 +241,40 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
+  Future<void> _syncBotRoadCamera() async {
+    if (cameraSyncInProgress) {
+      return;
+    }
+
+    setState(() => cameraSyncInProgress = true);
+    try {
+      final result =
+          await IotCameraSyncService(
+            collection: Setting.fRoadReports,
+          ).syncEvents();
+
+      Setting.showMessage(
+        'Synchronisation camera',
+        'Importes: ${result.imported} | Ignores: ${result.skipped} | Erreurs: ${result.failed}',
+        result.failed > 0 ? Colors.red : Colors.green,
+      );
+
+      if (result.hasChanges) {
+        await _refresh();
+      }
+    } catch (_) {
+      Setting.showMessage(
+        'Camera BotRoad inaccessible',
+        'Connecte le telephone au WiFi BotRoad-CAM puis reessaie.',
+        Colors.red,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => cameraSyncInProgress = false);
+      }
+    }
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) {
       return 'Date inconnue';
@@ -275,6 +311,77 @@ class _AlertsScreenState extends State<AlertsScreen> {
       default:
         return AppColors.success;
     }
+  }
+
+  String _formatAiPrediction(RoadReport alert) {
+    final prediction = alert.aiPrediction?.trim();
+    if (prediction == null || prediction.isEmpty) {
+      return 'Non disponible';
+    }
+    return prediction.replaceAll('_', ' ');
+  }
+
+  List<Widget> _buildSensorRows(RoadReport alert) {
+    final sensorData = alert.sensorData;
+    if (sensorData == null || sensorData.isEmpty) {
+      return const [
+        _DetailRow(label: 'Capteurs', value: 'Aucune donnee capteur'),
+      ];
+    }
+
+    const preferredKeys = [
+      'roadState',
+      'shock',
+      'totalG',
+      'ax',
+      'ay',
+      'az',
+      'pitch',
+      'roll',
+      'speed',
+      'satellites',
+    ];
+
+    final rows = <Widget>[];
+    for (final key in preferredKeys) {
+      if (sensorData.containsKey(key)) {
+        rows.add(_DetailRow(label: key, value: '${sensorData[key]}'));
+      }
+    }
+
+    if (rows.isEmpty) {
+      rows.addAll(
+        sensorData.entries
+            .take(8)
+            .map(
+              (entry) => _DetailRow(label: entry.key, value: '${entry.value}'),
+            ),
+      );
+    }
+
+    return rows;
+  }
+
+  Widget _buildAlertImage(String imageUrl) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder:
+              (_, __, ___) => Container(
+                color: AppColors.surfaceElevated,
+                alignment: Alignment.center,
+                child: const Icon(
+                  LucideIcons.imageOff,
+                  color: AppColors.textMuted,
+                ),
+              ),
+        ),
+      ),
+    );
   }
 
   _AlertStats _calculateStats(List<RoadReport> alerts) {
@@ -661,6 +768,32 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     ),
                   ],
                 ),
+                if (alert.source == 'iot_ai' ||
+                    alert.aiPrediction?.trim().isNotEmpty == true ||
+                    alert.sensorData?.isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  _DetailSection(
+                    title: 'Analyse automatique',
+                    children: [
+                      _DetailRow(
+                        label: 'Prediction IA',
+                        value: _formatAiPrediction(alert),
+                      ),
+                      _DetailRow(
+                        label: 'Dispositif',
+                        value: alert.deviceId ?? 'Non renseigne',
+                      ),
+                      ..._buildSensorRows(alert),
+                    ],
+                  ),
+                ],
+                if (alert.imageUrls.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  _DetailSection(
+                    title: 'Image capturee',
+                    children: [_buildAlertImage(alert.imageUrls.first)],
+                  ),
+                ],
                 if (alert.comment?.trim().isNotEmpty == true) ...[
                   const SizedBox(height: 12),
                   _DetailSection(
@@ -914,6 +1047,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                                 : null,
                       );
                     },
+                  ),
+                  IconButton(
+                    tooltip: 'Synchroniser camera BotRoad',
+                    icon:
+                        cameraSyncInProgress
+                            ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                            : const Icon(LucideIcons.camera),
+                    onPressed: cameraSyncInProgress ? null : _syncBotRoadCamera,
                   ),
                   IconButton(
                     icon: const Icon(LucideIcons.refreshCw),
