@@ -257,7 +257,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
-  Future<void> _syncBotRoadCamera() async {
+  Future<void> _syncWapiCamera() async {
     if (cameraSyncInProgress) {
       return;
     }
@@ -280,7 +280,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
       }
     } catch (_) {
       Setting.showMessage(
-        'Camera BotRoad inaccessible',
+        'Camera Wapi inaccessible',
         'Connecte le telephone au WiFi BotRoad-CAM puis reessaie.',
         Colors.red,
       );
@@ -1079,7 +1079,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     },
                   ),
                   IconButton(
-                    tooltip: 'Synchroniser camera BotRoad',
+                    tooltip: 'Synchroniser camera Wapi',
                     icon:
                         cameraSyncInProgress
                             ? const SizedBox(
@@ -1088,7 +1088,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                             : const Icon(LucideIcons.camera),
-                    onPressed: cameraSyncInProgress ? null : _syncBotRoadCamera,
+                    onPressed: cameraSyncInProgress ? null : _syncWapiCamera,
                   ),
                   IconButton(
                     icon: const Icon(LucideIcons.refreshCw),

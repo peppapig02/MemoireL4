@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:botroad/utils/const/colors.dart';
 
-/// Design tokens BotRoad V2 — radii, ombres, glow, bordures.
+/// Design tokens Wapi V2 — radii, ombres, glow, bordures.
 abstract final class AppTokens {
   // Coins arrondis
   static const double radiusButton = 100; // pill complet

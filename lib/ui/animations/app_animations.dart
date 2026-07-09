@@ -1,6 +1,6 @@
 import 'package:flutter/animation.dart';
 
-/// Durées et courbes standard BotRoad — rapides, discrètes, 150–300 ms.
+/// Durées et courbes standard Wapi — rapides, discrètes, 150–300 ms.
 abstract final class AppAnimations {
   static const Duration fast = Duration(milliseconds: 150);
   static const Duration normal = Duration(milliseconds: 200);

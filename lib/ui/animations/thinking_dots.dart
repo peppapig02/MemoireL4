@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
 
-/// "BotRoad réfléchit..." avec points animés . .. ... — pas de spinner.
+/// "Wapi réfléchit..." avec points animés . .. ... — pas de spinner.
 class ThinkingDots extends StatefulWidget {
   final String label;
 

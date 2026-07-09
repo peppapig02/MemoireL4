@@ -108,7 +108,7 @@ class IotCameraSyncService {
       eventId: event.eventId,
       latitude: event.latitude,
       longitude: event.longitude,
-      locationLabel: 'Signalement IoT BotRoad',
+      locationLabel: 'Signalement IoT Wapi',
       type: 'mauvaise_route',
       severity: _severityFromPrediction(prediction),
       comment: 'Signalement automatique depuis ESP32-CAM : ${event.roadState}',
