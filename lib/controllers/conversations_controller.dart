@@ -214,4 +214,28 @@ class ConversationsController extends GetxController {
       return null;
     }
   }
+
+  /// Supprime une conversation et tous ses messages associés.
+  Future<bool> deleteConversation(String key) async {
+    try {
+      // Delete all messages in the conversation first
+      final msgs = await Setting.fMessages
+          .where(BDColumnNames.Messages_id_conversation, isEqualTo: key)
+          .get();
+      final batch = Setting.firestore.batch();
+      for (final doc in msgs.docs) {
+        batch.delete(doc.reference);
+      }
+      batch.delete(Setting.fConversations.doc(key));
+      await batch.commit();
+
+      listConversations.removeWhere((c) => c.key == key);
+      listConversations.refresh();
+      update();
+      return true;
+    } catch (e) {
+      printDebug("error delete conversation :::$e");
+      return false;
+    }
+  }
 }

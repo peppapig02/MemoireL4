@@ -1,6 +1,8 @@
 import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Coche de validation discrète — 1 s puis disparition.
 class SuccessCheck extends StatefulWidget {
@@ -67,7 +69,7 @@ class _SuccessCheckState extends State<SuccessCheck>
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.check_rounded,
+                LucideIcons.check,
                 color: AppColors.success,
                 size: 28 * _opacity.value.clamp(0.3, 1),
               ),
@@ -79,8 +81,12 @@ class _SuccessCheckState extends State<SuccessCheck>
   }
 }
 
-void showSuccessOverlay(BuildContext context) {
-  final overlay = Overlay.of(context);
+void showSuccessOverlay([BuildContext? context]) {
+  // Prefer the root navigator overlay (always alive) over the local context
+  // to avoid "deactivated ancestor" crashes when called right after Get.back().
+  final ctx = Get.overlayContext ?? context;
+  if (ctx == null) return;
+  final overlay = Overlay.of(ctx);
   late OverlayEntry entry;
   entry = OverlayEntry(
     builder: (ctx) => Center(

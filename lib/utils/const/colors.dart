@@ -1,42 +1,75 @@
 import 'package:flutter/material.dart';
 
-/// Palette BotRoad V2 — copilote IA de mobilité.
+/// Palette Wapi — accent corail + système adaptatif light/dark.
+/// Les couleurs marquées `const` restent identiques dans les deux modes.
+/// Les getters s'adaptent à [AppColors.setMode].
 class AppColors {
-  // Accent principal — Rose BotRoad
-  static const Color primary = Color(0xFFFF4FA3);
+  static bool _dark = false;
 
-  // Variantes accent
-  static const Color primaryLight = Color(0xFFFF7FBC);
-  static const Color primaryDark = Color(0xFFE03D8F);
+  /// Appelé par [ThemeController] avant chaque rebuild.
+  static void setMode(bool dark) => _dark = dark;
+  static bool get isDark => _dark;
 
-  // Alias legacy (migration progressive)
-  static const Color accent = Color(0xFFFF7ABB);
-  static const Color accentLight = Color(0xFFFF9BCD);
-  static const Color accentDark = Color(0xFFFF2B91);
+  // ── Accent corail — identique dans les deux modes ──────────────────
+  static const Color primary = Color(0xFFF56B6F);
+  static const Color primaryLight = Color(0xFFFF8D92);
+  static const Color primaryDark = Color(0xFFE85A5F);
 
-  // Fonds
-  static const Color background = Color(0xFF0B0B0F);
-  static const Color backgroundSecondary = Color(0xFF121218);
-  static const Color surface = Color(0xFF17171D);
-  static const Color surfaceElevated = Color(0xFF20202A);
+  // Alias legacy
+  static const Color accent = Color(0xFFFF8D92);
+  static const Color accentLight = Color(0xFFFFB3B6);
+  static const Color accentDark = Color(0xFFE85A5F);
 
-  // Texte
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB5B5C2);
-  static const Color textMuted = Color(0xFF747480);
-
-  // Système
+  // ── Système — identique dans les deux modes ─────────────────────────
   static const Color success = Color(0xFF22C55E);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color info = Color(0xFF3498DB);
 
-  // Neutres (legacy)
-  static const Color neutral = Color(0xFF747480);
-  static const Color neutralLight = Color(0xFF2A2A32);
-  static const Color neutralDark = Color(0xFF3A3A4A);
+  // ── Fonds ───────────────────────────────────────────────────────────
+  static Color get background =>
+      _dark ? const Color(0xFF111111) : const Color(0xFFF8F6F4);
+  static Color get backgroundSecondary =>
+      _dark ? const Color(0xFF181818) : const Color(0xFFF0EEEC);
 
-  // Bordures & effets
-  static const Color divider = Color(0x0FFFFFFF);
-  static const Color glow = Color(0x26FF4FA3);
+  // Surface neumorphique — même ton que le fond : le relief vient des
+  // ombres (neuHighlight/neuShadow), pas d'un contraste de couleur.
+  static Color get surface => background;
+
+  // Surfaces qui doivent réellement se détacher (bottom sheet, dropdown,
+  // snackbar) — ex-couleur `surface`, gardée distincte du fond.
+  static Color get surfaceElevated =>
+      _dark ? const Color(0xFF1C1C1C) : const Color(0xFFFFFFFF);
+
+  // ── Ombres neumorphiques — reflet clair + ombre douce, même teinte
+  // que le fond de chaque mode ─────────────────────────────────────────
+  static Color get neuHighlight => _dark
+      ? const Color(0xFF2C2C2C).withValues(alpha: 0.55)
+      : const Color(0xFFFFFFFF).withValues(alpha: 0.9);
+  static Color get neuShadow => _dark
+      ? Colors.black.withValues(alpha: 0.6)
+      : const Color(0xFFD8D3CE).withValues(alpha: 0.65);
+
+  // ── Texte ────────────────────────────────────────────────────────────
+  static Color get textPrimary =>
+      _dark ? const Color(0xFFECECEB) : const Color(0xFF1A1A1A);
+  static Color get textSecondary =>
+      _dark ? const Color(0xFF9A9A9A) : const Color(0xFF666666);
+  static Color get textMuted =>
+      _dark ? const Color(0xFF5E5E5E) : const Color(0xFF999999);
+
+  // ── Neutres ──────────────────────────────────────────────────────────
+  static Color get neutral =>
+      _dark ? const Color(0xFF5E5E5E) : const Color(0xFF999999);
+  static Color get neutralLight =>
+      _dark ? const Color(0xFF2A2A2A) : const Color(0xFFEAEAEA);
+  static Color get neutralDark =>
+      _dark ? const Color(0xFFCCCCCC) : const Color(0xFF444444);
+
+  // ── Bordures & effets ────────────────────────────────────────────────
+  static Color get divider =>
+      _dark ? const Color(0xFF272727) : const Color(0xFFEAEAEA);
+  static Color get accentSoft =>
+      _dark ? const Color(0xFF3A1C1D) : const Color(0xFFFFE7E8);
+  static Color get glow => primary.withValues(alpha: _dark ? 0.20 : 0.15);
 }

@@ -29,7 +29,7 @@ class NetworkStatusBanner extends StatelessWidget {
               isOffline
                   ? AppColors.warning.withValues(alpha: 0.18)
                   : AppColors.success.withValues(alpha: 0.14),
-          border: const Border(bottom: BorderSide(color: AppColors.divider)),
+          border: Border(bottom: BorderSide(color: AppColors.divider)),
         ),
         child: SafeArea(
           bottom: false,
@@ -38,7 +38,7 @@ class NetworkStatusBanner extends StatelessWidget {
                 ? 'network_status_offline'.tr
                 : 'network_status_online'.tr,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textPrimary,
               fontWeight: FontWeight.w600,
             ),

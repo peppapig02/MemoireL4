@@ -10,7 +10,9 @@ import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
 import 'package:botroad/models/routes_model.dart';
 import 'package:botroad/ui/screens/main/main_nav_controller.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/ui/widgets/network_status_banner.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -20,7 +22,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-const String _botRoadMapStyle = '''
+const String kWapiDarkMapStyle = '''
 [
   {"elementType":"geometry","stylers":[{"color":"#121218"}]},
   {"elementType":"labels.text.fill","stylers":[{"color":"#B6B6C5"}]},
@@ -645,104 +647,124 @@ class _IteneraireState extends State<Iteneraire> {
 
     final result = await Get.bottomSheet<Map<String, String?>>(
       StatefulBuilder(
-        builder: (context, setSheetState) {
-          return Container(
-            padding: const EdgeInsets.all(24),
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        builder: (sheetCtx, setSheetState) {
+          return Padding(
+            // pushes content up when keyboard appears
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(sheetCtx).bottom,
             ),
-            child: SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Signaler une anomalie',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: AppColors.textMuted,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const Text(
+                        'Signaler une anomalie',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedType,
+                        decoration: const InputDecoration(
+                          labelText: 'Type de probleme',
+                          border: OutlineInputBorder(),
+                        ),
+                        items:
+                            types.entries
+                                .map(
+                                  (entry) => DropdownMenuItem(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setSheetState(() => selectedType = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedSeverity,
+                        decoration: const InputDecoration(
+                          labelText: 'Gravite',
+                          border: OutlineInputBorder(),
+                        ),
+                        items:
+                            severities.entries
+                                .map(
+                                  (entry) => DropdownMenuItem(
+                                    value: entry.key,
+                                    child: Text(entry.value),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setSheetState(() => selectedSeverity = value);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: commentController,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'Commentaire optionnel',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(LucideIcons.triangleAlert),
+                          label: const Text('Envoyer le signalement'),
+                          onPressed:
+                              isReporting
+                                  ? null
+                                  : () => Get.back(result: {
+                                    'type': selectedType,
+                                    'severity': selectedSeverity,
+                                    'comment': commentController.text.trim(),
+                                  }),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedType,
-                    decoration: const InputDecoration(
-                      labelText: 'Type de probleme',
-                      border: OutlineInputBorder(),
-                    ),
-                    items:
-                        types.entries
-                            .map(
-                              (entry) => DropdownMenuItem(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setSheetState(() => selectedType = value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedSeverity,
-                    decoration: const InputDecoration(
-                      labelText: 'Gravite',
-                      border: OutlineInputBorder(),
-                    ),
-                    items:
-                        severities.entries
-                            .map(
-                              (entry) => DropdownMenuItem(
-                                value: entry.key,
-                                child: Text(entry.value),
-                              ),
-                            )
-                            .toList(),
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setSheetState(() => selectedSeverity = value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: commentController,
-                    minLines: 2,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Commentaire optionnel',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.report_problem_outlined),
-                      label: const Text('Envoyer le signalement'),
-                      onPressed:
-                          isReporting
-                              ? null
-                              : () {
-                                final type = selectedType;
-                                final severity = selectedSeverity;
-                                final comment = commentController.text.trim();
-                                Navigator.of(context).pop({
-                                  'type': type,
-                                  'severity': severity,
-                                  'comment': comment,
-                                });
-                              },
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           );
         },
       ),
+      isScrollControlled: true,
     );
 
-    commentController.dispose();
+    // Defer dispose past the dismissal animation to avoid "used after disposed"
+    Future.microtask(() => commentController.dispose());
 
     if (result == null || !mounted) {
       return;
@@ -870,9 +892,9 @@ class _IteneraireState extends State<Iteneraire> {
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: SafeArea(
           child: Column(
@@ -885,7 +907,7 @@ class _IteneraireState extends State<Iteneraire> {
               ),
               const SizedBox(height: 12),
               _RouteModeOption(
-                icon: Icons.flash_on_outlined,
+                icon: LucideIcons.zap,
                 title: 'Rapide',
                 description: 'Priorite a la duree du trajet.',
                 onTap: () {
@@ -894,7 +916,7 @@ class _IteneraireState extends State<Iteneraire> {
                 },
               ),
               _RouteModeOption(
-                icon: Icons.verified_user_outlined,
+                icon: LucideIcons.shieldCheck,
                 title: 'Sur',
                 description: 'Evite au maximum les alertes et zones a risque.',
                 onTap: () {
@@ -903,7 +925,7 @@ class _IteneraireState extends State<Iteneraire> {
                 },
               ),
               _RouteModeOption(
-                icon: Icons.balance_outlined,
+                icon: LucideIcons.scale,
                 title: 'Equilibre',
                 description: 'Compromis entre securite, distance et duree.',
                 onTap: () {
@@ -1230,7 +1252,7 @@ class _IteneraireState extends State<Iteneraire> {
             ? const Column(
               children: [
                 NetworkStatusBanner(),
-                Expanded(child: Center(child: CircularProgressIndicator())),
+                Expanded(child: Center(child: WapiLoader(size: 48))),
               ],
             )
             : routeErrorMessage != null
@@ -1265,7 +1287,7 @@ class _IteneraireState extends State<Iteneraire> {
                             target: center,
                             zoom: 12,
                           ),
-                          style: _botRoadMapStyle,
+                          style: kWapiDarkMapStyle,
                           onMapCreated: (controller) {
                             mapController = controller;
                             if (bounds != null) {
@@ -1386,7 +1408,7 @@ class _IteneraireState extends State<Iteneraire> {
                           child: ElevatedButton.icon(
                             onPressed:
                                 isLoadingRouteMode ? null : _showRouteModeSheet,
-                            icon: const Icon(Icons.tune),
+                            icon: const Icon(LucideIcons.slidersHorizontal),
                             label: Text(
                               isLoadingRouteMode
                                   ? 'Calcul...'
@@ -1401,7 +1423,7 @@ class _IteneraireState extends State<Iteneraire> {
                               minimumSize: const Size(96, 44),
                               maximumSize: const Size(150, 48),
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              side: const BorderSide(color: AppColors.divider),
+                              side: BorderSide(color: AppColors.divider),
                             ),
                           ),
                         ),
@@ -1413,7 +1435,7 @@ class _IteneraireState extends State<Iteneraire> {
                                 isLoadingAlternative
                                     ? null
                                     : _showSaferAlternative,
-                            icon: const Icon(Icons.alt_route),
+                            icon: const Icon(LucideIcons.waypoints),
                             label: Text(
                               isLoadingAlternative
                                   ? 'Recherche...'
@@ -1461,7 +1483,7 @@ class _IteneraireState extends State<Iteneraire> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        leading: const BackButton(color: AppColors.textPrimary),
+        leading: BackButton(color: AppColors.textPrimary),
       ),
       body: body,
     );
@@ -1507,7 +1529,7 @@ class _RouteModeOption extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary,
@@ -1516,12 +1538,12 @@ class _RouteModeOption extends StatelessWidget {
                   const SizedBox(height: 3),
                   Text(
                     description,
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    style: TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            Icon(LucideIcons.chevronRight, color: AppColors.textMuted),
           ],
         ),
       ),
@@ -1634,7 +1656,7 @@ class NavigationBottomSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Instructions de navigation',
             style: TextStyle(
               fontWeight: FontWeight.w700,
@@ -1704,7 +1726,7 @@ class NavigationBottomSheet extends StatelessWidget {
                       children: [
                         Text(
                           instruction,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -1714,7 +1736,7 @@ class NavigationBottomSheet extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             distance,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 12,
                             ),
@@ -1750,27 +1772,19 @@ class NavigationBottomSheet extends StatelessWidget {
     final segments = _routeSegments();
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceElevated,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),
         ),
-        border: const Border(top: BorderSide(color: AppColors.divider)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 30,
-            offset: const Offset(0, -8),
-            spreadRadius: 0,
-          ),
-        ],
+        boxShadow: AppTokens.neumorphicRaised(),
       ),
       child: Column(
         children: [
           Container(
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.only(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(32),
                 topRight: Radius.circular(32),
               ),
@@ -1812,7 +1826,7 @@ class NavigationBottomSheet extends StatelessWidget {
                       Expanded(
                         child: Text(
                           route?.nom ?? 'itinerary_title'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w700,
                             fontSize: 16,
@@ -1824,7 +1838,7 @@ class NavigationBottomSheet extends StatelessWidget {
                         children: [
                           Text(
                             _formatDistance(route?.points),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textPrimary,
                               fontWeight: FontWeight.w700,
                               fontSize: 16,
@@ -1832,7 +1846,7 @@ class NavigationBottomSheet extends StatelessWidget {
                           ),
                           Text(
                             _estimateDuration(route?.points),
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.textMuted,
                               fontSize: 14,
                             ),
@@ -1870,7 +1884,7 @@ class NavigationBottomSheet extends StatelessWidget {
                             Row(
                               children: [
                                 const Icon(
-                                  Icons.warning_amber_rounded,
+                                  LucideIcons.triangleAlert,
                                   color: AppColors.warning,
                                 ),
                                 const SizedBox(width: 8),
@@ -1886,7 +1900,7 @@ class NavigationBottomSheet extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               _buildWarningSummary(route?.warnings),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 13,
                               ),
@@ -1908,7 +1922,7 @@ class NavigationBottomSheet extends StatelessWidget {
               children: [
                 OutlinedButton.icon(
                   onPressed: onReport,
-                  icon: const Icon(Icons.report_problem_outlined),
+                  icon: const Icon(LucideIcons.triangleAlert),
                   label: const Text('Signaler'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,

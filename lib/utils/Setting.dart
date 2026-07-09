@@ -28,6 +28,8 @@ void printDebug(String text) {
 }
 
 class Setting {
+  static final scaffoldKey = GlobalKey<ScaffoldMessengerState>();
+
   static double getHeight(BuildContext context) =>
       MediaQuery.of(context).size.height;
   static double getWidth(BuildContext context) =>
@@ -75,23 +77,67 @@ class Setting {
     Color color = Colors.white,
   ]) {
     final isError = color == Colors.red || color == AppColors.error;
-    Get.snackbar(
-      title,
-      msg,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColors.surface,
-      colorText: AppColors.textPrimary,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 16,
-      duration: const Duration(seconds: 3),
-      animationDuration: const Duration(milliseconds: 200),
-      forwardAnimationCurve: Curves.easeOutCubic,
-      reverseAnimationCurve: Curves.easeIn,
-      icon: Icon(
-        isError ? Icons.error_outline : Icons.check_circle_outline,
-        color: isError ? AppColors.error : AppColors.success,
-      ),
-    );
+    final isWarning = color == Colors.orange;
+
+    final IconData icon;
+    final Color iconColor;
+    if (isError) {
+      icon = Icons.error_outline_rounded;
+      iconColor = AppColors.error;
+    } else if (isWarning) {
+      icon = Icons.warning_amber_rounded;
+      iconColor = AppColors.warning;
+    } else {
+      icon = Icons.check_circle_outline_rounded;
+      iconColor = AppColors.success;
+    }
+
+    scaffoldKey.currentState
+      ?..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AppColors.divider),
+          ),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          duration: const Duration(seconds: 4),
+          elevation: 6,
+          content: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(icon, color: iconColor, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    if (msg.isNotEmpty)
+                      Text(
+                        msg,
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
   }
 
   static Future showDialog(String title, String msg) async {

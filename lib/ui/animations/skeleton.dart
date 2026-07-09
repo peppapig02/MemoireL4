@@ -1,6 +1,7 @@
 import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// Skeleton discret — shimmer léger, pas de spinner.
 class SkeletonBox extends StatefulWidget {
@@ -100,7 +101,7 @@ class MapSkeleton extends StatelessWidget {
             opacity: 0.6,
             duration: AppAnimations.slow,
             child: Icon(
-              Icons.map_outlined,
+              LucideIcons.map,
               size: 48,
               color: AppColors.textMuted.withValues(alpha: 0.5),
             ),

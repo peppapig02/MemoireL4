@@ -2,7 +2,7 @@ import 'package:botroad/models/conversionModel.dart';
 
 List<ChatMessageModel> messages = [
   ChatMessageModel(
-    sender: "BotRoad",
+    sender: "Wapi",
     message:
         "Bonjour Moïse Comment allez-vous aujourd'hui et comment je peux faire pour vous aider ?",
     isUser: false,
@@ -13,7 +13,7 @@ List<ChatMessageModel> messages = [
     isUser: true,
   ),
   ChatMessageModel(
-    sender: "BotRoad",
+    sender: "Wapi",
     message:
         "Super de te savoir en bonne santé moi je suis une ia je veux toujours bien. Dit moi plutôt ou tu veux aller aujourd'hui comme ça je t'aide à retrouver",
     isUser: false,

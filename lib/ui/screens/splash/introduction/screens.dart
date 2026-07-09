@@ -23,13 +23,13 @@ class _IntroductionScreensState extends State<IntroductionScreens> {
     (
       title: 'Votre copilote intelligent',
       body:
-          'Discutez naturellement avec BotRoad pour trouver le meilleur itinéraire.',
+          'Discutez naturellement avec Wapi pour trouver le meilleur itinéraire.',
       animation: 0,
     ),
     (
       title: 'Des routes analysées en temps réel',
       body:
-          'BotRoad prend en compte le trafic, les signalements et l\'état des routes.',
+          'Wapi prend en compte le trafic, les signalements et l\'état des routes.',
       animation: 1,
     ),
     (

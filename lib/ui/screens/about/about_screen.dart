@@ -29,7 +29,7 @@ class AboutScreen extends StatelessWidget {
             const SizedBox(height: 20),
             const Center(
               child: Text(
-                'BotRoad',
+                'Wapi',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,

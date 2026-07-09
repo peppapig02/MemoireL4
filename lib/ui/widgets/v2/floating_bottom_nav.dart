@@ -1,5 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/utils/const/colors.dart';
@@ -15,65 +16,89 @@ class FloatingBottomNav extends StatelessWidget {
   });
 
   static const _items = [
-    (icon: CupertinoIcons.chat_bubble_2_fill, label: 'Assistant'),
-    (icon: CupertinoIcons.map_fill, label: 'Carte'),
-    (icon: CupertinoIcons.exclamationmark_triangle_fill, label: 'Alertes'),
-    (icon: CupertinoIcons.clock_fill, label: 'Historique'),
-    (icon: CupertinoIcons.person_fill, label: 'Profil'),
+    (icon: LucideIcons.messageCircle, label: 'Assistant'),
+    (icon: LucideIcons.map, label: 'Carte'),
+    (icon: LucideIcons.triangleAlert, label: 'Alertes'),
+    (icon: LucideIcons.history, label: 'Trajets'),
+    (icon: LucideIcons.user, label: 'Profil'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 72,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      decoration: AppTokens.neumorphicDecoration(
         borderRadius: AppTokens.borderRadiusNav,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        boxShadow: AppTokens.shadowSoft,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: List.generate(_items.length, (index) {
           final item = _items[index];
           final isActive = currentIndex == index;
-          final isAssistant = index == 0;
 
           return Expanded(
             child: GestureDetector(
-              onTap: () => onTap(index),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onTap(index);
+              },
               behavior: HitTestBehavior.opaque,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: EdgeInsets.all(isActive ? 8 : 6),
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      // Glass fill — teinté primary mais transparent
                       color: isActive
-                          ? AppColors.primary.withValues(alpha: 0.15)
+                          ? AppColors.primary.withValues(alpha: 0.14)
                           : Colors.transparent,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: isActive && isAssistant
-                          ? AppTokens.glowAccent(opacity: 0.15)
+                      // Glass rim
+                      border: isActive
+                          ? Border.all(
+                              color: AppColors.primary.withValues(alpha: 0.32),
+                              width: 1.2,
+                            )
+                          : null,
+                      // Glow + relief "enfoncé" pour la pastille active
+                      boxShadow: isActive
+                          ? [
+                              ...AppTokens.neumorphicPressed(intensity: 0.6),
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.45),
+                                blurRadius: 18,
+                                spreadRadius: 1,
+                              ),
+                            ]
                           : null,
                     ),
-                    child: Icon(
-                      item.icon,
-                      size: 22,
-                      color:
-                          isActive ? AppColors.primary : AppColors.textMuted,
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          item.icon,
+                          key: ValueKey(isActive),
+                          size: 20,
+                          color: isActive
+                              ? AppColors.primary
+                              : AppColors.textMuted,
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.label,
+                  const SizedBox(height: 2),
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
                     style: TextStyle(
                       fontSize: 10,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                      color:
-                          isActive ? AppColors.primary : AppColors.textMuted,
+                      fontWeight:
+                          isActive ? FontWeight.w600 : FontWeight.w400,
+                      color: isActive ? AppColors.primary : AppColors.textMuted,
                     ),
+                    child: Text(item.label),
                   ),
                 ],
               ),

@@ -16,7 +16,7 @@ class AssistantEmptyState extends StatelessWidget {
   });
 
   static const _phrases = [
-    'Bienvenue sur BotRoad',
+    'Bienvenue sur Wapi',
     'Où allons-nous aujourd\'hui ?',
     'Comment puis-je vous aider ?',
     'Trouvons le meilleur itinéraire',
@@ -49,8 +49,8 @@ class AssistantEmptyState extends StatelessWidget {
                 opacity: visible ? 1 : 0,
                 duration: AppAnimations.slow,
                 child: Image.asset(
-                  Assets.logo_white,
-                  height: 72,
+                  Assets.logo_primary,
+                  height: 110,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -82,7 +82,7 @@ class AssistantEmptyState extends StatelessWidget {
                             color: AppColors.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: AppColors.divider,
                             ),
                           ),
                           child: Text(

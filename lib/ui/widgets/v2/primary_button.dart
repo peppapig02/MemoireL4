@@ -28,8 +28,11 @@ class PrimaryButton extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           borderRadius: AppTokens.borderRadiusButton,
-          boxShadow: glowing && onPressed != null && !isLoading
-              ? AppTokens.glowAccent()
+          boxShadow: onPressed != null && !isLoading
+              ? [
+                  ...AppTokens.neumorphicRaised(),
+                  if (glowing) ...AppTokens.glowAccent(),
+                ]
               : null,
         ),
         child: SizedBox(

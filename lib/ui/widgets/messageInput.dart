@@ -40,7 +40,7 @@ class MessageInput extends StatelessWidget {
                   isDense: true,
                   hintText: 'chat_describe_place'.tr,
                 ),
-                style: const TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: AppColors.textPrimary),
               ),
             ),
           ),

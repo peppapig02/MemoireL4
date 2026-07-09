@@ -50,7 +50,7 @@ class _AccordionSectionState extends State<AccordionSection> {
                   turns: _expanded ? 0.5 : 0,
                   duration: AppAnimations.normal,
                   curve: AppAnimations.ease,
-                  child: const Icon(
+                  child: Icon(
                     Icons.keyboard_arrow_down,
                     color: AppColors.textMuted,
                     size: 22,

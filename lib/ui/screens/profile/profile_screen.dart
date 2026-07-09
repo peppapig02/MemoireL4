@@ -1,17 +1,19 @@
 import 'package:botroad/core/i18n/app_translations.dart';
-import 'package:botroad/ui/animations/accordion_section.dart';
 import 'package:botroad/ui/animations/success_check.dart';
 import 'package:botroad/core/models/road_report.dart';
 import 'package:botroad/core/models/trip_history.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
 import 'package:botroad/ui/screens/alerts/alerts_screen.dart';
+import 'package:botroad/controllers/theme_controller.dart';
+import 'package:botroad/ui/animations/fade_slide.dart';
+import 'package:botroad/ui/screens/main/main_nav_controller.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
-import 'package:botroad/ui/widgets/v2/app_card.dart';
+import 'package:botroad/ui/widgets/v2/menu_item_tile.dart';
 import 'package:botroad/ui/widgets/v2/primary_button.dart';
+import 'package:botroad/ui/widgets/v2/section_header.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
@@ -19,7 +21,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class ProfileScreen extends StatefulWidget {
   final bool embedded;
-
   const ProfileScreen({super.key, this.embedded = true});
 
   @override
@@ -65,11 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<_ProfileData> _loadData() async {
     final userId = Setting.userCtrl.user.value.key;
     if (userId == null) return const _ProfileData();
-
-    final tripService = TripHistoryService(collection: Setting.fTripHistory);
-    final reportService = RoadReportService(collection: Setting.fRoadReports);
-    final trips = await tripService.getTripHistoryForUser(userId, limit: 3);
-    final reports = await reportService.getRoadReportsForUser(userId, limit: 3);
+    final trips = await TripHistoryService(
+      collection: Setting.fTripHistory,
+    ).getTripHistoryForUser(userId, limit: 3);
+    final reports = await RoadReportService(
+      collection: Setting.fRoadReports,
+    ).getRoadReportsForUser(userId, limit: 3);
     return _ProfileData(trips: trips, reports: reports);
   }
 
@@ -77,6 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_nameController.text.isEmpty) return;
     final ok = await Setting.userCtrl.updateUser({'nom': _nameController.text});
     if (ok && mounted) {
+      Get.back();
       showSuccessOverlay(context);
     }
   }
@@ -91,7 +94,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await _storage.write(_carModeKey, _selectedMode);
     if (!mounted) return;
     setState(() {});
+    Get.back();
     showSuccessOverlay(context);
+  }
+
+  void _showEditProfileSheet() {
+    Get.bottomSheet(
+      _BottomSheetWrapper(
+        title: 'profile_name'.tr,
+        child: Column(
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(
+                labelText: 'profile_name'.tr,
+                prefixIcon: const Icon(LucideIcons.user),
+              ),
+            ),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: 'profile_update'.tr,
+              glowing: false,
+              onPressed: _saveProfile,
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  void _showVehicleSheet() {
+    Get.bottomSheet(
+      StatefulBuilder(
+        builder: (ctx, setS) => _BottomSheetWrapper(
+          title: 'car_title'.tr,
+          child: Column(
+            children: [
+              TextField(
+                controller: _carNameController,
+                decoration: InputDecoration(
+                  labelText: 'car_vehicle_name'.tr,
+                  prefixIcon: const Icon(LucideIcons.car),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedMode,
+                dropdownColor: AppColors.surface,
+                decoration: InputDecoration(
+                  labelText: 'car_driving_mode'.tr,
+                  prefixIcon: const Icon(LucideIcons.settings),
+                ),
+                items: _drivingModes
+                    .map((m) =>
+                        DropdownMenuItem(value: m, child: Text(m.tr)))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) {
+                    setS(() => _selectedMode = v);
+                    setState(() => _selectedMode = v);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              PrimaryButton(
+                label: 'car_save'.tr,
+                glowing: false,
+                onPressed: _saveCarPrefs,
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
   }
 
   void _showLanguageSheet() {
@@ -99,44 +176,109 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Get.locale ?? AppTranslations.fallback,
     );
     Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+      _BottomSheetWrapper(
+        title: 'drawer_choose_language'.tr,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          children: [
+            ('fr', 'language_french'.tr),
+            ('en', 'language_english'.tr),
+            ('ln', 'language_lingala'.tr),
+            ('sw', 'language_swahili'.tr),
+          ]
+              .map(
+                (e) => MenuItemTile(
+                  icon: current == e.$1
+                      ? LucideIcons.circleCheck
+                      : LucideIcons.circle,
+                  label: e.$2,
+                  iconColor: current == e.$1
+                      ? AppColors.primary
+                      : AppColors.textMuted,
+                  iconBackground: current == e.$1
+                      ? AppColors.accentSoft
+                      : AppColors.backgroundSecondary,
+                  onTap: () async {
+                    await AppTranslations.changeLocale(e.$1);
+                    Get.back();
+                    setState(() {});
+                  },
+                ),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showAboutSheet() {
+    Get.bottomSheet(
+      _BottomSheetWrapper(
+        title: 'drawer_about'.tr,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'drawer_choose_language'.tr,
-              style: Theme.of(context).textTheme.titleMedium,
+              'about_project_body'.tr,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),
-            ...[
-              ('fr', 'language_french'.tr),
-              ('en', 'language_english'.tr),
-              ('ln', 'language_lingala'.tr),
-              ('sw', 'language_swahili'.tr),
-            ].map(
-              (e) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  current == e.$1
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: AppColors.primary,
-                ),
-                title: Text(e.$2),
-                onTap: () async {
-                  await AppTranslations.changeLocale(e.$1);
-                  Get.back();
-                },
-              ),
+            Text(
+              'about_future_body'.tr,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'auth_version'.trParams({'version': Setting.version}),
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showAccountInfoSheet(_ProfileData data) {
+    final user = Setting.userCtrl.user.value;
+    Get.bottomSheet(
+      _BottomSheetWrapper(
+        title: 'profile_account_info'.tr,
+        child: Column(
+          children: [
+            _InfoRow('profile_creation_date'.tr,
+                user.date_create ?? 'profile_not_available'.tr),
+            _InfoRow('profile_last_login'.tr,
+                user.date_connexion ?? 'profile_not_available'.tr),
+            _InfoRow(
+              'profile_account_status'.tr,
+              user.is_active == true
+                  ? 'profile_status_active'.tr
+                  : 'profile_status_inactive'.tr,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _section(List<Widget> tiles) {
+    return Container(
+      decoration: AppTokens.cardDecoration(),
+      child: Column(
+        children: tiles.asMap().entries.map((e) {
+          final isLast = e.key == tiles.length - 1;
+          return Column(
+            children: [
+              e.value,
+              if (!isLast)
+                Divider(
+                  height: 1,
+                  indent: 72,
+                  endIndent: 0,
+                  color: AppColors.divider,
+                ),
+            ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -144,363 +286,328 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = Setting.userCtrl.user.value;
-    final theme = Theme.of(context);
     final langCode = AppTranslations.codeFromLocale(
       Get.locale ?? AppTranslations.fallback,
     );
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: FutureBuilder<_ProfileData>(
-          future: _dataFuture,
-          builder: (context, snapshot) {
-            final data = snapshot.data ?? const _ProfileData();
+      body: FutureBuilder<_ProfileData>(
+        future: _dataFuture,
+        builder: (context, snapshot) {
+          final data = snapshot.data ?? const _ProfileData();
 
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                widget.embedded ? 16 : 0,
-                20,
-                120,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.embedded)
-                    Text(
-                      'Profil',
-                      style: theme.textTheme.displayLarge?.copyWith(
-                        fontSize: 28,
-                      ),
-                    ),
-                  if (widget.embedded) const SizedBox(height: 20),
-
-                  // Carte utilisateur
-                  AppCard(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.3),
-                            ),
-                            boxShadow: AppTokens.glowAccent(opacity: 0.1),
-                          ),
-                          child: const CircleAvatar(
-                            radius: 32,
-                            backgroundColor: AppColors.background,
-                            child: Icon(
-                              CupertinoIcons.person_fill,
-                              color: AppColors.primary,
-                              size: 32,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
+          return CustomScrollView(
+            slivers: [
+              // ── Hero corail ────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Container(
+                  color: AppColors.primary,
+                  child: Column(
+                    children: [
+                      SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                user.nom ?? 'BotRoad',
-                                style: theme.textTheme.titleMedium,
+                              // Avatar
+                              Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    width: 2,
+                                  ),
+                                ),
+                                child: CircleAvatar(
+                                  radius: 44,
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.2),
+                                  child: const Icon(
+                                    LucideIcons.user,
+                                    size: 44,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
+                              const SizedBox(height: 12),
+                              Text(
+                                user.nom ?? 'Mon profil',
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
                               Text(
                                 user.email ?? '',
-                                style: theme.textTheme.bodySmall,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              // Stats chips
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _StatChip(
+                                    label: 'car_recent_trips'.tr,
+                                    value: '${data.trips.length}',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  _StatChip(
+                                    label: 'car_reports'.tr,
+                                    value: '${data.reports.length}',
+                                  ),
+                                ],
                               ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  AppCard(
-                    child: Column(
-                      children: [
-                        TextField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            labelText: 'profile_name'.tr,
-                            prefixIcon: const Icon(LucideIcons.user),
+                      ),
+                      // Courbe de transition
+                      Container(
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(28),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        PrimaryButton(
-                          label: 'profile_update'.tr,
-                          glowing: false,
-                          onPressed: _saveProfile,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Mon véhicule
-                  AppCard(
-                    child: AccordionSection(
-                      title: 'car_title'.tr,
-                      initiallyExpanded: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          TextField(
-                            controller: _carNameController,
-                            decoration: InputDecoration(
-                              labelText: 'car_vehicle_name'.tr,
-                              prefixIcon: const Icon(LucideIcons.car),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            initialValue: _selectedMode,
-                            dropdownColor: AppColors.surface,
-                            items:
-                                _drivingModes
-                                    .map(
-                                      (m) => DropdownMenuItem(
-                                        value: m,
-                                        child: Text(m.tr),
-                                      ),
-                                    )
-                                    .toList(),
-                            decoration: InputDecoration(
-                              labelText: 'car_driving_mode'.tr,
-                              prefixIcon: const Icon(LucideIcons.settings),
-                            ),
-                            onChanged: (v) {
-                              if (v != null) setState(() => _selectedMode = v);
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              _Stat(
-                                label: 'car_recent_trips'.tr,
-                                value: '${data.trips.length}',
-                              ),
-                              const SizedBox(width: 12),
-                              _Stat(
-                                label: 'car_reports'.tr,
-                                value: '${data.reports.length}',
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          PrimaryButton(
-                            label: 'car_save'.tr,
-                            glowing: false,
-                            onPressed: _saveCarPrefs,
-                          ),
-                        ],
                       ),
-                    ),
+                    ],
                   ),
-                  if (data.trips.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'car_recent_trips'.tr,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          ...data.trips.map(
-                            (t) => Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '${t.originLabel ?? 'car_start'.tr} → ${t.destinationLabel ?? 'car_destination'.tr}',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (data.reports.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    AppCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'car_reports'.tr,
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          ...data.reports.map(
-                            (r) => Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                '${r.type} · ${r.severity}',
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-
-                  // Préférences
-                  AppCard(
-                    child: AccordionSection(
-                      title: 'Préférences',
-                      child: Column(
-                        children: [
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(Icons.warning_amber_rounded),
-                            title: const Text('Signalements'),
-                            subtitle: const Text('Consulter les signalements'),
-                            trailing: const Icon(
-                              LucideIcons.chevronRight,
-                              size: 18,
-                            ),
-                            onTap: () => Get.to(() => const AlertsScreen()),
-                          ),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(LucideIcons.languages),
-                            title: Text('drawer_language'.tr),
-                            subtitle: Text(
-                              AppTranslations.labelFromCode(langCode),
-                            ),
-                            trailing: const Icon(
-                              LucideIcons.chevronRight,
-                              size: 18,
-                            ),
-                            onTap: _showLanguageSheet,
-                          ),
-                          ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: const Icon(LucideIcons.bell),
-                            title: const Text('Notifications'),
-                            subtitle: const Text('Bientôt disponible'),
-                            trailing: Switch(value: false, onChanged: null),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Informations compte
-                  AppCard(
-                    child: AccordionSection(
-                      title: 'profile_account_info'.tr,
-                      child: Column(
-                        children: [
-                          _InfoRow(
-                            'profile_creation_date'.tr,
-                            user.date_create ?? 'profile_not_available'.tr,
-                          ),
-                          _InfoRow(
-                            'profile_last_login'.tr,
-                            user.date_connexion ?? 'profile_not_available'.tr,
-                          ),
-                          _InfoRow(
-                            'profile_account_status'.tr,
-                            user.is_active == true
-                                ? 'profile_status_active'.tr
-                                : 'profile_status_inactive'.tr,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // À propos
-                  AppCard(
-                    child: AccordionSection(
-                      title: 'drawer_about'.tr,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'about_project_body'.tr,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'about_future_body'.tr,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'auth_version'.trParams({
-                              'version': Setting.version,
-                            }),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  PrimaryButton(
-                    label: 'drawer_logout'.tr,
-                    glowing: false,
-                    onPressed: () => Setting.userCtrl.deconnectUser(),
-                  ),
-                ],
+                ),
               ),
-            );
-          },
-        ),
+
+              // ── Sections ────────────────────────────────────────
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 120),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Mon Compte
+                    const SectionHeader(title: 'Mon Compte'),
+                    const SizedBox(height: 12),
+                    FadeSlide(
+                      delay: Duration.zero,
+                      child: _section([
+                      MenuItemTile(
+                        icon: LucideIcons.user,
+                        label: 'Mon profil',
+                        subtitle: user.nom ?? '',
+                        onTap: _showEditProfileSheet,
+                      ),
+                      MenuItemTile(
+                        icon: LucideIcons.car,
+                        label: 'car_title'.tr,
+                        subtitle: _carNameController.text,
+                        onTap: _showVehicleSheet,
+                      ),
+                      MenuItemTile(
+                        icon: LucideIcons.languages,
+                        label: 'drawer_language'.tr,
+                        subtitle: AppTranslations.labelFromCode(langCode),
+                        onTap: _showLanguageSheet,
+                      ),
+                      MenuItemTile(
+                        icon: LucideIcons.bell,
+                        label: 'Notifications',
+                        subtitle: 'Bientôt disponible',
+                        trailing: Switch(
+                          value: false,
+                          onChanged: null,
+                          activeThumbColor: AppColors.primary,
+                        ),
+                      ),
+                      Obx(() {
+                        final tc = Get.find<ThemeController>();
+                        return MenuItemTile(
+                          icon: tc.isDark.value
+                              ? LucideIcons.moon
+                              : LucideIcons.sun,
+                          label: 'Thème',
+                          subtitle: tc.isDark.value ? 'Mode sombre' : 'Mode clair',
+                          trailing: Switch(
+                            value: tc.isDark.value,
+                            onChanged: (_) => tc.toggle(),
+                            activeThumbColor: AppColors.primary,
+                            activeTrackColor:
+                                AppColors.primary.withValues(alpha: 0.25),
+                          ),
+                        );
+                      }),
+                    ]),      // _section
+                    ),       // FadeSlide
+
+                    const SizedBox(height: 24),
+
+                    // Navigation
+                    const SectionHeader(title: 'Navigation'),
+                    const SizedBox(height: 12),
+                    FadeSlide(
+                      delay: const Duration(milliseconds: 80),
+                      child: _section([
+                      MenuItemTile(
+                        icon: LucideIcons.triangleAlert,
+                        label: 'Signalements',
+                        subtitle: 'Consulter les alertes',
+                        onTap: () => Get.to(() => const AlertsScreen()),
+                      ),
+                      MenuItemTile(
+                        icon: LucideIcons.history,
+                        label: 'Historique',
+                        subtitle: '${data.trips.length} trajets récents',
+                        onTap: () => switchMainTab(3),
+                      ),
+                    ]),   // _section
+                    ),    // FadeSlide
+
+                    const SizedBox(height: 24),
+
+                    // Informations
+                    SectionHeader(
+                      title: 'profile_account_info'.tr,
+                    ),
+                    const SizedBox(height: 12),
+                    FadeSlide(
+                      delay: const Duration(milliseconds: 160),
+                      child: _section([
+                      MenuItemTile(
+                        icon: LucideIcons.info,
+                        label: 'drawer_about'.tr,
+                        onTap: _showAboutSheet,
+                      ),
+                      MenuItemTile(
+                        icon: LucideIcons.shieldCheck,
+                        label: 'profile_account_info'.tr,
+                        subtitle: user.is_active == true
+                            ? 'profile_status_active'.tr
+                            : 'profile_status_inactive'.tr,
+                        onTap: () => _showAccountInfoSheet(data),
+                      ),
+                    ]),   // _section
+                    ),    // FadeSlide
+
+                    const SizedBox(height: 32),
+
+                    // Déconnexion
+                    PrimaryButton(
+                      label: 'drawer_logout'.tr,
+                      glowing: false,
+                      onPressed: () => Setting.userCtrl.deconnectUser(),
+                      icon: LucideIcons.logOut,
+                    ),
+                  ]),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _ProfileData {
-  final List<TripHistory> trips;
-  final List<RoadReport> reports;
+// ── Bottom sheet wrapper ───────────────────────────────────────────────────────
 
-  const _ProfileData({this.trips = const [], this.reports = const []});
-}
+class _BottomSheetWrapper extends StatelessWidget {
+  final String title;
+  final Widget child;
 
-class _Stat extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _Stat({required this.label, required this.value});
+  const _BottomSheetWrapper({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
+    return Padding(
+      // Keyboard inset outside the Container so it pushes the sheet up
+      // rather than expanding the Column inside it.
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.viewInsetsOf(context).bottom,
+      ),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
         decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          color: AppColors.surfaceElevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(color: AppColors.primary),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            // ClampingScrollPhysics prevents the StretchingOverscrollIndicator
+            // from firing setState during layout when the sheet resizes.
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 20),
+                child,
+                const SizedBox(height: 8),
+              ],
             ),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
+// ── Stat chip ─────────────────────────────────────────────────────────────────
+
+class _StatChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _StatChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Info row ──────────────────────────────────────────────────────────────────
 
 class _InfoRow extends StatelessWidget {
   final String label;
@@ -511,7 +618,7 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
           SizedBox(
@@ -519,10 +626,24 @@ class _InfoRow extends StatelessWidget {
             child: Text(label, style: Theme.of(context).textTheme.bodySmall),
           ),
           Expanded(
-            child: Text(value, style: Theme.of(context).textTheme.bodyLarge),
+            child: Text(
+              value,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: AppColors.textPrimary),
+            ),
           ),
         ],
       ),
     );
   }
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+
+class _ProfileData {
+  final List<TripHistory> trips;
+  final List<RoadReport> reports;
+  const _ProfileData({this.trips = const [], this.reports = const []});
 }

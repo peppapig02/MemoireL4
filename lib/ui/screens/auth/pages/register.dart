@@ -3,6 +3,8 @@ import 'package:botroad/ui/screens/main/main_shell.dart';
 import 'package:botroad/ui/widgets/boutton.dart';
 import 'package:botroad/ui/widgets/textfield.dart';
 import 'package:botroad/utils/Setting.dart';
+import 'package:botroad/utils/const/colors.dart';
+import 'package:botroad/utils/const/images.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -115,6 +117,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 text: 'register_submit'.tr,
                 isLoading: _userCtrl.loading.value,
                 onPressed: _userCtrl.loading.value ? null : _handleRegister,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: Divider(color: AppColors.divider)),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'ou',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ),
+                Expanded(child: Divider(color: AppColors.divider)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Obx(
+              () => OutlinedButton(
+                onPressed: _userCtrl.loading.value
+                    ? null
+                    : () async {
+                        final success = await _userCtrl.signInWithGoogle();
+                        if (!mounted) return;
+                        if (success) {
+                          Get.offAll(
+                            () => const MainShell(),
+                            transition: Transition.fadeIn,
+                            duration: AppAnimations.medium,
+                          );
+                        } else {
+                          Setting.showMessage(
+                            'login_error'.tr,
+                            _userCtrl.messageErreur,
+                            Colors.red,
+                          );
+                        }
+                      },
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Image.asset(Assets.google, height: 22),
+                    const SizedBox(width: 10),
+                    Text('auth_continue_google'.tr),
+                  ],
+                ),
               ),
             ),
           ],

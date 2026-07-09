@@ -43,17 +43,17 @@ class _TextFieldCustumState extends State<TextFieldCustum> {
       duration: AppAnimations.normal,
       curve: AppAnimations.ease,
       decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: AppTokens.borderRadiusInput,
-        boxShadow:
-            _focused
-                ? [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    blurRadius: 12,
-                    spreadRadius: 0,
-                  ),
-                ]
-                : null,
+        boxShadow: [
+          ...AppTokens.neumorphicRaised(),
+          if (_focused)
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              blurRadius: 12,
+              spreadRadius: 0,
+            ),
+        ],
       ),
       child: SizedBox(
         height: AppTokens.inputHeight,

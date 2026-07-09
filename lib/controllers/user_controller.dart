@@ -416,7 +416,10 @@ class UserController extends GetxController {
 
     try {
       // Déclencher le flux d'authentification
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      final GoogleSignInAccount? googleUser = await GoogleSignIn(
+        serverClientId:
+            '243067162410-o71hgp309l4brtmckh9a2t3l23crdfl3.apps.googleusercontent.com',
+      ).signIn();
 
       if (googleUser == null) {
         messageErreur = "Connexion Google annulée";

@@ -42,19 +42,24 @@ class AppTextField extends StatelessWidget {
           ),
           const SizedBox(height: 8),
         ],
-        SizedBox(
-          height: maxLines == 1 ? AppTokens.inputHeight : null,
-          child: TextField(
-            controller: controller,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            enabled: enabled,
-            maxLines: maxLines,
-            style: Theme.of(context).textTheme.bodyLarge,
-            decoration: InputDecoration(
-              hintText: hintText,
-              prefixIcon: prefixIcon,
-              suffixIcon: suffixIcon,
+        Container(
+          decoration: AppTokens.neumorphicDecoration(
+            borderRadius: AppTokens.borderRadiusInput,
+          ),
+          child: SizedBox(
+            height: maxLines == 1 ? AppTokens.inputHeight : null,
+            child: TextField(
+              controller: controller,
+              obscureText: obscureText,
+              keyboardType: keyboardType,
+              enabled: enabled,
+              maxLines: maxLines,
+              style: Theme.of(context).textTheme.bodyLarge,
+              decoration: InputDecoration(
+                hintText: hintText,
+                prefixIcon: prefixIcon,
+                suffixIcon: suffixIcon,
+              ),
             ),
           ),
         ),

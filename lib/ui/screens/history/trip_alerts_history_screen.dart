@@ -1,5 +1,7 @@
 import 'package:botroad/core/models/trip_history.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
@@ -106,9 +108,9 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
 
   Color _severityColor(dynamic severity) {
     return switch (severity?.toString()) {
-      'eleve' => const Color(0xFFE53935),
-      'moyen' => const Color(0xFFFF9800),
-      _ => const Color(0xFF4CAF50),
+      'eleve' => AppColors.error,
+      'moyen' => AppColors.warning,
+      _ => AppColors.success,
     };
   }
 
@@ -152,36 +154,46 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      color: Colors.white,
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _StatTile(
-            icon: Icons.route,
-            label: 'Trajets',
-            value: '${stats.totalTrips}',
-            color: AppColors.primary,
-          ),
-          _StatTile(
-            icon: Icons.warning_amber_rounded,
-            label: 'Avec alertes',
-            value: '${stats.tripsWithAlerts}',
-            color: const Color(0xFFE53935),
-          ),
-          _StatTile(
-            icon: Icons.report_problem_outlined,
-            label: 'Alertes detectees',
-            value: '${stats.totalAlerts}',
-            color: const Color(0xFFFF9800),
-          ),
-          _StatTile(
-            icon: Icons.priority_high,
-            label: 'Gravite elevee',
-            value: '${stats.highSeverityAlerts}',
-            color: const Color(0xFFC62828),
-          ),
-        ],
+      color: AppColors.surface,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const spacing = 10.0;
+          final tileWidth = (constraints.maxWidth - spacing) / 2;
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              _StatTile(
+                width: tileWidth,
+                icon: Icons.route,
+                label: 'Trajets',
+                value: '${stats.totalTrips}',
+                color: AppColors.primary,
+              ),
+              _StatTile(
+                width: tileWidth,
+                icon: Icons.warning_amber_rounded,
+                label: 'Avec alertes',
+                value: '${stats.tripsWithAlerts}',
+                color: AppColors.error,
+              ),
+              _StatTile(
+                width: tileWidth,
+                icon: Icons.report_problem_outlined,
+                label: 'Alertes detectees',
+                value: '${stats.totalAlerts}',
+                color: AppColors.warning,
+              ),
+              _StatTile(
+                width: tileWidth,
+                icon: Icons.priority_high,
+                label: 'Gravite elevee',
+                value: '${stats.highSeverityAlerts}',
+                color: AppColors.error,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -189,7 +201,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
   Widget _buildFilters() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      color: const Color(0xFFF7F8FA),
+      color: AppColors.backgroundSecondary,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -221,9 +233,9 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
     Get.bottomSheet(
       Container(
         constraints: const BoxConstraints(maxHeight: 720),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -234,9 +246,9 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CircleAvatar(
-                      backgroundColor: Color(0xFFE7F6FB),
-                      child: Icon(Icons.route, color: AppColors.primary),
+                    CircleAvatar(
+                      backgroundColor: AppColors.accentSoft,
+                      child: const Icon(Icons.route, color: AppColors.primary),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -293,9 +305,9 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
                 ),
                 const SizedBox(height: 10),
                 if (trip.warnings.isEmpty)
-                  const Text(
+                  Text(
                     'Aucune alerte n a ete detectee sur ce trajet.',
-                    style: TextStyle(color: Colors.black54),
+                    style: TextStyle(color: AppColors.textSecondary),
                   )
                 else
                   ...trip.warnings.map(_buildWarningDetail),
@@ -320,11 +332,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+      decoration: AppTokens.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -373,11 +381,10 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
         trip.warnings.where((warning) => warning['severity'] == 'eleve').length;
     final hasWarnings = warningCount > 0;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: AppTokens.cardDecoration(),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppTokens.borderRadiusCard,
         onTap: () => _showTripDetails(trip),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -385,18 +392,14 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
-                backgroundColor:
-                    hasWarnings
-                        ? const Color(0xFFFFF3E6)
-                        : const Color(0xFFE8F5E9),
+                backgroundColor: hasWarnings
+                    ? AppColors.warning.withValues(alpha: 0.14)
+                    : AppColors.success.withValues(alpha: 0.14),
                 child: Icon(
                   hasWarnings
                       ? Icons.warning_amber_rounded
                       : Icons.check_circle_outline,
-                  color:
-                      hasWarnings
-                          ? const Color(0xFFC97A00)
-                          : const Color(0xFF2E7D32),
+                  color: hasWarnings ? AppColors.warning : AppColors.success,
                 ),
               ),
               const SizedBox(width: 12),
@@ -460,7 +463,7 @@ class _TripAlertsHistoryScreenState extends State<TripAlertsHistoryScreen> {
         future: tripsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: WapiLoader(size: 48));
           }
 
           final trips = snapshot.data ?? const <TripHistory>[];
@@ -530,12 +533,14 @@ class _TripAlertStats {
 }
 
 class _StatTile extends StatelessWidget {
+  final double width;
   final IconData icon;
   final String label;
   final String value;
   final Color color;
 
   const _StatTile({
+    required this.width,
     required this.icon,
     required this.label,
     required this.value,
@@ -545,13 +550,11 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 166,
+      width: width,
       constraints: const BoxConstraints(minHeight: 82),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
+      decoration: AppTokens.neumorphicDecoration(
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +587,7 @@ class _StatTile extends StatelessWidget {
                   label,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
             ),
@@ -614,16 +617,16 @@ class _FilterChipButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : Colors.white,
+          color: selected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected ? AppColors.primary : const Color(0xFFE0E0E0),
-          ),
+          boxShadow: selected
+              ? AppTokens.glowAccent(opacity: 0.3)
+              : AppTokens.neumorphicRaised(intensity: 0.5),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.black87,
+            color: selected ? Colors.white : AppColors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -665,13 +668,13 @@ class _InfoPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: AppColors.backgroundSecondary,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: Colors.black54),
+          Icon(icon, size: 15, color: AppColors.textSecondary),
           const SizedBox(width: 5),
           Text(
             label,
@@ -694,11 +697,7 @@ class _DetailSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+      decoration: AppTokens.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -731,8 +730,8 @@ class _DetailRow extends StatelessWidget {
             width: 116,
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.black54,
+              style: TextStyle(
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),

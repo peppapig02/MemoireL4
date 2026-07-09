@@ -11,9 +11,9 @@ import 'package:botroad/ui/animations/skeleton.dart';
 import 'package:botroad/ui/screens/home/iteneraire.dart';
 import 'package:botroad/ui/screens/main/main_nav_controller.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
+import 'package:botroad/ui/widgets/v2/primary_button.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/Setting.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
@@ -306,7 +306,7 @@ class _MapTopBar extends StatelessWidget {
     return Row(
       children: [
         _IconBtn(
-          icon: CupertinoIcons.chat_bubble_2_fill,
+          icon: LucideIcons.messageCircle,
           onTap: onAssistantTap,
           highlight: true,
         ),
@@ -317,7 +317,7 @@ class _MapTopBar extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              border: Border.all(color: AppColors.divider),
               boxShadow: AppTokens.shadowSoft,
             ),
             child: TextField(
@@ -371,18 +371,16 @@ class _IconBtn extends StatelessWidget {
         width: 48,
         height: 48,
         decoration: BoxDecoration(
-          color:
-              highlight
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-          boxShadow: highlight ? AppTokens.glowAccent(opacity: 0.1) : null,
+          color: highlight ? AppColors.primary : AppColors.surface,
+          shape: highlight ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: highlight ? null : BorderRadius.circular(16),
+          border: highlight ? null : Border.all(color: AppColors.divider),
+          boxShadow: highlight ? AppTokens.glowAccent(opacity: 0.25) : null,
         ),
         child: Icon(
           icon,
           size: 20,
-          color: highlight ? AppColors.primary : AppColors.textSecondary,
+          color: highlight ? Colors.white : AppColors.textSecondary,
         ),
       ),
     );
@@ -416,6 +414,7 @@ class _EmptyMapView extends StatelessWidget {
           duration: AppAnimations.slow,
           child: GoogleMap(
             initialCameraPosition: CameraPosition(target: center, zoom: 13),
+            style: AppColors.isDark ? kWapiDarkMapStyle : null,
             onMapCreated: onMapCreated,
             markers: markers,
             trafficEnabled: trafficEnabled,
@@ -443,6 +442,12 @@ class _EmptyMapView extends StatelessWidget {
                 Text(
                   'Demandez un trajet à l\'assistant pour afficher la route ici.',
                   style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                PrimaryButton(
+                  label: 'Demander un itinéraire',
+                  icon: LucideIcons.messageCircle,
+                  onPressed: () => switchMainTab(0),
                 ),
               ],
             ),

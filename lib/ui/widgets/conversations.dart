@@ -1,4 +1,5 @@
 import 'package:botroad/models/conversionModel.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
 
@@ -30,17 +31,14 @@ class ConversationWidget extends StatelessWidget {
             decoration: BoxDecoration(
               color: message.isUser ? AppColors.primary : AppColors.surface,
               borderRadius: BorderRadius.circular(20.0),
-              border:
-                  message.isUser ? null : Border.all(color: AppColors.divider),
-              boxShadow:
-                  message.isUser
-                      ? [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          blurRadius: 20,
-                        ),
-                      ]
-                      : null,
+              boxShadow: [
+                ...AppTokens.neumorphicRaised(intensity: 0.7),
+                if (message.isUser)
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                  ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

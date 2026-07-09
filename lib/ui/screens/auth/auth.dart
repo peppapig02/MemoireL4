@@ -1,7 +1,6 @@
-import 'package:botroad/ui/animations/app_animations.dart';
 import 'package:botroad/ui/screens/auth/pages/login.dart';
 import 'package:botroad/ui/screens/auth/pages/register.dart';
-import 'package:botroad/ui/screens/main/main_shell.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:botroad/utils/const/images.dart';
@@ -159,123 +158,87 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           Column(
             children: [
               Container(
-                height: height / 2.2,
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  image: DecorationImage(
-                    image: AssetImage(Assets.grateciels),
-                    fit: BoxFit.fitWidth,
-                    alignment: Alignment.bottomCenter,
-                    opacity: 0.15,
+                height: height / 2.6,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(36),
                   ),
                 ),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.2),
-                          blurRadius: 40,
+                child: SafeArea(
+                  bottom: false,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 96,
+                          height: 96,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Image.asset(
+                              Assets.logo_mark,
+                              width: 96,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Wapi',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'La bonne route, à chaque fois',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
                         ),
                       ],
                     ),
-                    child: Image.asset(
-                      Assets.logo_white,
-                      width: width / 4,
-                      fit: BoxFit.contain,
-                    ),
                   ),
                 ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : OutlinedButton(
-                            onPressed: () async {
-                              setState(() {
-                                isLoading = true;
-                              });
-                              final success =
-                                  await Setting.userCtrl.signInWithGoogle();
-                              setState(() {
-                                isLoading = false;
-                              });
-                              if (success) {
-                                Get.offAll(
-                                  () => const MainShell(),
-                                  transition: Transition.fadeIn,
-                                  duration: AppAnimations.medium,
-                                );
-                              } else {
-                                Setting.showMessage(
-                                  'login_error'.tr,
-                                  Setting.userCtrl.messageErreur,
-                                  Colors.red,
-                                );
-                              }
-                            },
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset(Assets.google, height: 24),
-                                const SizedBox(width: 10),
-                                Text('auth_continue_google'.tr),
-                              ],
-                            ),
-                          ),
-                      SizedBox(height: height / 50),
-                      Text(
-                        'auth_version'.trParams({'version': Setting.version}),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              Expanded(child: SizedBox()),
             ],
           ),
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
-              margin: EdgeInsets.symmetric(vertical: height / 7),
+              margin: EdgeInsets.only(top: height / 2.7, bottom: 12),
               width: width / 1.2,
+              height: height - height / 2.7 - 12,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
+                boxShadow: AppTokens.neumorphicRaised(),
               ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   TabBar(
                     controller: _tabController,
                     indicatorColor: AppColors.primary,
                     labelColor: AppColors.textPrimary,
                     unselectedLabelColor: AppColors.textMuted,
-                    dividerColor: Colors.white.withValues(alpha: 0.05),
+                    dividerColor: AppColors.divider,
                     labelStyle: const TextStyle(fontWeight: FontWeight.bold),
                     tabs: [
                       Tab(text: 'auth_login_tab'.tr),
                       Tab(text: 'auth_register_tab'.tr),
                     ],
                   ),
-                  SizedBox(
-                    height: height / 2.4,
+                  Expanded(
                     child: TabBarView(
                       controller: _tabController,
                       physics: const PageScrollPhysics(),

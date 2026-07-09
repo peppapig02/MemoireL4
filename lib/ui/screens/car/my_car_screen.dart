@@ -2,6 +2,8 @@ import 'package:botroad/core/models/road_report.dart';
 import 'package:botroad/core/models/trip_history.dart';
 import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
@@ -156,8 +158,8 @@ class _MyCarScreenState extends State<MyCarScreen> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0B5D7A), Color(0xFF1792B5)],
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -338,7 +340,7 @@ class _MyCarScreenState extends State<MyCarScreen> {
                           (trip) => ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
-                              backgroundColor: const Color(0xFFE7F6FB),
+                              backgroundColor: AppColors.accentSoft,
                               child: Icon(
                                 Icons.route,
                                 color: AppColors.primary,
@@ -366,10 +368,11 @@ class _MyCarScreenState extends State<MyCarScreen> {
                           (report) => ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
-                              backgroundColor: const Color(0xFFFFF3E6),
+                              backgroundColor:
+                                  AppColors.warning.withValues(alpha: 0.14),
                               child: const Icon(
                                 Icons.warning_amber_rounded,
-                                color: Color(0xFFC97A00),
+                                color: AppColors.warning,
                               ),
                             ),
                             title: Text(_formatReportMeta(report)),
@@ -454,27 +457,27 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: AppTokens.cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (isLoading)
+            Center(child: WapiLoader(size: 48))
+          else if (children.isEmpty)
             Text(
-              title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (isLoading)
-              const Center(child: CircularProgressIndicator())
-            else if (children.isEmpty)
-              Text(emptyMessage, style: const TextStyle(color: Colors.black54))
-            else
-              ...children,
-          ],
-        ),
+              emptyMessage,
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            ...children,
+        ],
       ),
     );
   }
@@ -497,8 +500,8 @@ class _CarInfoRow extends StatelessWidget {
             width: 130,
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.black54,
+              style: TextStyle(
+                color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
               ),
             ),

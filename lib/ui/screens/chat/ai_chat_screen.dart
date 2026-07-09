@@ -30,9 +30,11 @@ import 'package:botroad/ui/controllers/active_route_controller.dart';
 import 'package:botroad/ui/screens/main/main_nav_controller.dart';
 import 'package:botroad/ui/widgets/v2/assistant_empty_state.dart';
 import 'package:botroad/ui/widgets/v2/route_info_card.dart';
+import 'package:botroad/ui/widgets/v2/wapi_loader.dart';
 import 'package:botroad/controllers/locations_controller.dart';
 import 'package:botroad/controllers/routes_controller.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
@@ -219,7 +221,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   Widget _buildNewConversationButton() {
     return IconButton(
-      icon: const Icon(Icons.add_comment_outlined),
+      icon: const Icon(LucideIcons.messageCirclePlus),
       tooltip: 'chat_new_conversation'.tr,
       onPressed: _startNewConversation,
     );
@@ -247,7 +249,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
               const Spacer(),
               if (showNewConversation) _buildNewConversationButton(),
               IconButton(
-                icon: Icon(isSearching ? Icons.close : Icons.search),
+                icon: Icon(isSearching ? LucideIcons.x : LucideIcons.search),
                 onPressed: () {
                   setState(() {
                     isSearching = !isSearching;
@@ -289,7 +291,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   String _buildConversationContext() {
     final context = '''
-Tu es BotRoad, un assistant IA spécialisé dans la navigation et la recherche de lieux. Ton rôle est d'aider les utilisateurs à trouver des itinéraires et des lieux.
+Tu es Wapi, un assistant IA spécialisé dans la navigation et la recherche de lieux. Ton rôle est d'aider les utilisateurs à trouver des itinéraires et des lieux.
 
 Instructions spécifiques :
 1. Si l'utilisateur demande un itinéraire ou cherche un lieu, aide-le à trouver la meilleure route.
@@ -782,23 +784,24 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
       _scrollToBottom();
     } catch (e) {
-      Get.snackbar(
+      Setting.showMessage(
         'chat_send_error_title'.tr,
         'chat_send_error_body'.trParams({'error': '$e'}),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        Colors.red,
       );
       printDebug("error sendMessage ::: $e");
     } finally {
-      setState(() {
-        isLoading = false;
-        isTyping = false;
-        if (loadedMessages.isNotEmpty) {
-          final latestBot =
-              loadedMessages.where((m) => m.sender == 'bot').firstOrNull;
-          _latestBotStreamKey = latestBot?.key;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          isTyping = false;
+          if (loadedMessages.isNotEmpty) {
+            final latestBot =
+                loadedMessages.where((m) => m.sender == 'bot').firstOrNull;
+            _latestBotStreamKey = latestBot?.key;
+          }
+        });
+      }
     }
   }
 
@@ -841,17 +844,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
             return message;
           }).toList();
 
-      setState(() {
-        loadedMessages.addAll(newMessages);
-        lastDocument = snapshot.docs.last;
-        hasMoreMessages = snapshot.docs.length == messagesPerPage;
-      });
+      if (mounted) {
+        setState(() {
+          loadedMessages.addAll(newMessages);
+          lastDocument = snapshot.docs.last;
+          hasMoreMessages = snapshot.docs.length == messagesPerPage;
+        });
+      }
     } catch (e) {
       printDebug("Error loading more messages: $e");
     } finally {
-      setState(() {
-        isLoadingMore = false;
-      });
+      if (mounted) setState(() => isLoadingMore = false);
     }
   }
 
@@ -936,7 +939,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppColors.divider),
         ),
         child: const ThinkingDots(),
       ),
@@ -947,9 +950,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-        ),
+        child: WapiLoader(size: 36),
       ),
     );
   }
@@ -970,14 +971,14 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
 
   Widget _buildMessageComposer() {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 8, 16, widget.embedded ? 100 : 12),
-      decoration: const BoxDecoration(color: AppColors.background),
+      padding: EdgeInsets.fromLTRB(16, 4, 16, widget.embedded ? 12 : 8),
+      decoration: BoxDecoration(color: AppColors.background),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppColors.divider),
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -989,7 +990,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 if (showMicButton && _speechEnabled)
                   IconButton(
                     icon: Icon(
-                      _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+                      _isListening ? LucideIcons.mic : LucideIcons.micOff,
                     ),
                     color:
                         _isListening ? AppColors.primary : AppColors.textMuted,
@@ -997,30 +998,30 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                   ),
                 if (showMicButton && !_speechEnabled)
                   IconButton(
-                    icon: const Icon(Icons.mic_none_rounded),
+                    icon: const Icon(LucideIcons.micOff),
                     color: AppColors.textMuted,
                     onPressed: () {
-                      Get.snackbar(
+                      Setting.showMessage(
                         'Microphone',
-                        'FonctionnalitÃ© vocale bientÃ´t disponible',
-                        backgroundColor: AppColors.surface,
-                        colorText: AppColors.textPrimary,
+                        'Fonctionnalité vocale bientôt disponible',
+                        Colors.orange,
                       );
                     },
                   ),
                 Expanded(
                   child: TextField(
                     controller: messageController,
-                    style: const TextStyle(color: AppColors.textPrimary),
+                    style: TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: 'chat_write_message'.tr,
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: showMicButton ? 16 : 12,
-                        vertical: 14,
+                        vertical: 10,
                       ),
                     ),
-                    maxLines: null,
+                    maxLines: 4,
+                    minLines: 1,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendMessage(),
                   ),
@@ -1041,7 +1042,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                       ],
                     ),
                     child: const Icon(
-                      Icons.send,
+                      LucideIcons.send,
                       size: 20,
                       color: Colors.white,
                     ),
@@ -1100,7 +1101,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         border:
             isUser
                 ? null
-                : Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                : Border.all(color: AppColors.divider),
         boxShadow:
             isUser
                 ? [
@@ -1126,7 +1127,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               : StreamingText(
                 text: _wrapLongTextRuns(message.content ?? ''),
                 animate: message.key == _latestBotStreamKey,
-                style: const TextStyle(color: AppColors.textPrimary),
+                style: TextStyle(color: AppColors.textPrimary),
               ),
           const SizedBox(height: 4),
           Text(
@@ -1188,7 +1189,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 actions: [
                   _buildNewConversationButton(),
                   IconButton(
-                    icon: Icon(isSearching ? Icons.close : Icons.search),
+                    icon: Icon(isSearching ? LucideIcons.x : LucideIcons.search),
                     onPressed: () {
                       setState(() {
                         isSearching = !isSearching;
@@ -1212,11 +1213,11 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 controller: searchController,
                 decoration: InputDecoration(
                   hintText: 'chat_search_messages'.tr,
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: const Icon(LucideIcons.search),
                   suffixIcon:
                       searchQuery.isNotEmpty
                           ? IconButton(
-                            icon: const Icon(Icons.clear),
+                            icon: const Icon(LucideIcons.x),
                             onPressed: () {
                               setState(() {
                                 searchQuery = '';
@@ -1254,7 +1255,7 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 // );
 
                 if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                  return Center(child: WapiLoader(size: 48));
                 }
 
                 final messages = snapshot.data ?? loadedMessages;

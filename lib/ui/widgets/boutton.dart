@@ -1,5 +1,6 @@
 import 'package:botroad/ui/animations/scale_tap.dart';
 import 'package:botroad/ui/theme/app_tokens.dart';
+import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
 
 class Boutton extends StatelessWidget {
@@ -31,6 +32,16 @@ class Boutton extends StatelessWidget {
           height: AppTokens.buttonHeight,
           child: ElevatedButton(
             onPressed: isLoading ? null : onPressed,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              disabledBackgroundColor: AppColors.primary.withValues(
+                alpha: 0.4,
+              ),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: AppTokens.borderRadiusButton,
+              ),
+            ),
             child:
                 isLoading
                     ? const SizedBox(

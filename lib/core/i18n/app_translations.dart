@@ -135,7 +135,7 @@ class AppTranslations extends Translations {
       'profile_not_available': 'Non disponible',
       'about_project_title': 'A propos du projet',
       'about_project_body':
-          'BotRoad est un projet innovant developpe dans le cadre d un memoire academique. Cette application combine l intelligence artificielle et la navigation pour offrir une experience unique de guidage urbain.',
+          'Wapi est un projet innovant developpe dans le cadre d un memoire academique. Cette application combine l intelligence artificielle et la navigation pour offrir une experience unique de guidage urbain.',
       'about_features_title': 'Fonctionnalites principales',
       'about_feature_chat_title': 'Chat IA',
       'about_feature_chat_body':
@@ -148,7 +148,7 @@ class AppTranslations extends Translations {
           'Decouvrez les endroits populaires et les points d interet autour de vous.',
       'about_future_title': 'Perspectives futures',
       'about_future_body':
-          'En raison de sa pertinence et de son potentiel, BotRoad sera developpe en version production dans un avenir proche. L objectif est de rendre l application disponible en ligne pour le grand public, avec des fonctionnalites enrichies et une experience utilisateur optimisee.',
+          'En raison de sa pertinence et de son potentiel, Wapi sera developpe en version production dans un avenir proche. L objectif est de rendre l application disponible en ligne pour le grand public, avec des fonctionnalites enrichies et une experience utilisateur optimisee.',
       'about_version_title': 'Version',
       'about_version_value': '1.0.0 (Version prototype)',
       'home_welcome': 'Bienvenue sur',
@@ -283,7 +283,7 @@ class AppTranslations extends Translations {
       'profile_not_available': 'Not available',
       'about_project_title': 'About the project',
       'about_project_body':
-          'BotRoad is an innovative project developed as part of an academic thesis. This application combines artificial intelligence and navigation to provide a unique urban guidance experience.',
+          'Wapi is an innovative project developed as part of an academic thesis. This application combines artificial intelligence and navigation to provide a unique urban guidance experience.',
       'about_features_title': 'Main features',
       'about_feature_chat_title': 'AI chat',
       'about_feature_chat_body':
@@ -296,7 +296,7 @@ class AppTranslations extends Translations {
           'Discover popular places and points of interest around you.',
       'about_future_title': 'Future outlook',
       'about_future_body':
-          'Because of its relevance and potential, BotRoad will be developed into a production version in the near future. The goal is to make the application available online to the general public, with richer features and an optimized user experience.',
+          'Because of its relevance and potential, Wapi will be developed into a production version in the near future. The goal is to make the application available online to the general public, with richer features and an optimized user experience.',
       'about_version_title': 'Version',
       'about_version_value': '1.0.0 (Prototype version)',
       'home_welcome': 'Welcome to',
@@ -431,7 +431,7 @@ class AppTranslations extends Translations {
       'profile_not_available': 'Ezali te',
       'about_project_title': 'Na tina na projet',
       'about_project_body':
-          'BotRoad ezali projet ya sika oyo batongi na cadre ya memoire academique. Application oyo esangisi intelligence artificielle na navigation mpo na kopesa guidance ya ville ya ndenge ya sika.',
+          'Wapi ezali projet ya sika oyo batongi na cadre ya memoire academique. Application oyo esangisi intelligence artificielle na navigation mpo na kopesa guidance ya ville ya ndenge ya sika.',
       'about_features_title': 'Misala minene',
       'about_feature_chat_title': 'Chat IA',
       'about_feature_chat_body':
@@ -444,7 +444,7 @@ class AppTranslations extends Translations {
           'Mona bisika oyo bato mingi balingaka mpe ba points d interet pene na yo.',
       'about_future_title': 'Makambo ya mikolo ekoya',
       'about_future_body':
-          'Na tina ya ntina na yango mpe potentiel na yango, BotRoad ekotombolama na version production kala mingi te. Mokano ezali ya kopesa application na internet mpo bato nyonso basalela yango, na ba fonctionnalites mingi lisusu mpe user experience ya malamu.',
+          'Na tina ya ntina na yango mpe potentiel na yango, Wapi ekotombolama na version production kala mingi te. Mokano ezali ya kopesa application na internet mpo bato nyonso basalela yango, na ba fonctionnalites mingi lisusu mpe user experience ya malamu.',
       'about_version_title': 'Version',
       'about_version_value': '1.0.0 (Version prototype)',
       'home_welcome': 'Boyei malamu na',
@@ -581,7 +581,7 @@ class AppTranslations extends Translations {
       'profile_not_available': 'Haipatikani',
       'about_project_title': 'Kuhusu mradi',
       'about_project_body':
-          'BotRoad ni mradi bunifu uliotengenezwa kama sehemu ya kumbukumbu ya kitaaluma. Programu hii inaunganisha akili bandia na urambazaji ili kutoa uzoefu wa kipekee wa mwongozo wa mijini.',
+          'Wapi ni mradi bunifu uliotengenezwa kama sehemu ya kumbukumbu ya kitaaluma. Programu hii inaunganisha akili bandia na urambazaji ili kutoa uzoefu wa kipekee wa mwongozo wa mijini.',
       'about_features_title': 'Vipengele vikuu',
       'about_feature_chat_title': 'Chat ya AI',
       'about_feature_chat_body':
@@ -594,7 +594,7 @@ class AppTranslations extends Translations {
           'Gundua maeneo maarufu na vivutio vilivyo karibu nawe.',
       'about_future_title': 'Mwelekeo wa baadaye',
       'about_future_body':
-          'Kwa sababu ya umuhimu na uwezo wake, BotRoad itatengenezwa kuwa toleo la uzalishaji hivi karibuni. Lengo ni kufanya programu ipatikane mtandaoni kwa umma, ikiwa na vipengele vingi zaidi na uzoefu bora wa mtumiaji.',
+          'Kwa sababu ya umuhimu na uwezo wake, Wapi itatengenezwa kuwa toleo la uzalishaji hivi karibuni. Lengo ni kufanya programu ipatikane mtandaoni kwa umma, ikiwa na vipengele vingi zaidi na uzoefu bora wa mtumiaji.',
       'about_version_title': 'Toleo',
       'about_version_value': '1.0.0 (Toleo la mfano)',
       'home_welcome': 'Karibu kwenye',

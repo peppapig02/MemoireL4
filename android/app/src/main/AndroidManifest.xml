@@ -37,7 +37,7 @@
   </intent>
         </queries>
     <application
-        android:label="botroad"
+        android:label="Wapi"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <meta-data

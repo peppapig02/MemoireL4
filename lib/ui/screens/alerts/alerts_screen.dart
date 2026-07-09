@@ -14,7 +14,15 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 class AlertsScreen extends StatefulWidget {
   final bool embedded;
 
-  const AlertsScreen({super.key, this.embedded = true});
+  /// Onglet actif dans [MainShell] — bascule true->false->true quand
+  /// l'utilisateur revient sur cet onglet. Comme l'écran vit dans un
+  /// IndexedStack (jamais recréé), c'est le seul signal qui permet de
+  /// rafraîchir les données au lieu de garder le résultat du tout premier
+  /// chargement (fait au montage de MainShell, avant que l'onglet soit
+  /// jamais consulté).
+  final bool isVisible;
+
+  const AlertsScreen({super.key, this.embedded = true, this.isVisible = true});
 
   @override
   State<AlertsScreen> createState() => _AlertsScreenState();
@@ -34,6 +42,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
     roadReportService = RoadReportService(collection: Setting.fRoadReports);
     alertsFuture = _loadAlerts();
     RoadReportService.refreshRevision.addListener(_handleReportsChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant AlertsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isVisible && !oldWidget.isVisible) {
+      _refresh();
+    }
   }
 
   @override
@@ -346,59 +362,73 @@ class _AlertsScreenState extends State<AlertsScreen> {
         children: [
           Text('Statistiques', style: theme.textTheme.titleMedium),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _StatTile(
-                icon: LucideIcons.triangleAlert,
-                label: 'Total',
-                value: '${stats.total}',
-                color: AppColors.primary,
-              ),
-              _StatTile(
-                icon: LucideIcons.radar,
-                label: 'Actives',
-                value: '${stats.active}',
-                color: AppColors.error,
-              ),
-              _StatTile(
-                icon: LucideIcons.circleCheck,
-                label: 'Prises en charge',
-                value: '${stats.handled}',
-                color: AppColors.success,
-              ),
-              _StatTile(
-                icon: LucideIcons.clock,
-                label: 'Expirees',
-                value: '${stats.expired}',
-                color: AppColors.textMuted,
-              ),
-              _StatTile(
-                icon: LucideIcons.layers,
-                label: 'Type frequent',
-                value: _formatType(stats.topType),
-                color: AppColors.info,
-              ),
-              _StatTile(
-                icon: LucideIcons.signalHigh,
-                label: 'Gravite dominante',
-                value: stats.dominantSeverity,
-                color: _severityColor(stats.dominantSeverity),
-              ),
-              _StatTile(
-                icon: LucideIcons.thumbsUp,
-                label: 'Confirmations',
-                value: '${stats.confirmations}',
-                color: AppColors.success,
-              ),
-              _StatTile(
-                icon: LucideIcons.thumbsDown,
-                label: 'Refutations',
-                value: '${stats.refutations}',
-                color: AppColors.error,
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const spacing = 10.0;
+              final tileWidth = (constraints.maxWidth - spacing) / 2;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.triangleAlert,
+                    label: 'Total',
+                    value: '${stats.total}',
+                    color: AppColors.primary,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.radar,
+                    label: 'Actives',
+                    value: '${stats.active}',
+                    color: AppColors.error,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.circleCheck,
+                    label: 'Prises en charge',
+                    value: '${stats.handled}',
+                    color: AppColors.success,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.clock,
+                    label: 'Expirees',
+                    value: '${stats.expired}',
+                    color: AppColors.textMuted,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.layers,
+                    label: 'Type frequent',
+                    value: _formatType(stats.topType),
+                    color: AppColors.info,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.signalHigh,
+                    label: 'Gravite dominante',
+                    value: stats.dominantSeverity,
+                    color: _severityColor(stats.dominantSeverity),
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.thumbsUp,
+                    label: 'Confirmations',
+                    value: '${stats.confirmations}',
+                    color: AppColors.success,
+                  ),
+                  _StatTile(
+                    width: tileWidth,
+                    icon: LucideIcons.thumbsDown,
+                    label: 'Refutations',
+                    value: '${stats.refutations}',
+                    color: AppColors.error,
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -518,8 +548,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
     Get.bottomSheet(
       Container(
         constraints: const BoxConstraints(maxHeight: 720),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppTokens.radiusBottomSheet),
           ),
@@ -579,7 +609,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         LucideIcons.x,
                         color: AppColors.textMuted,
                       ),
@@ -838,8 +868,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ],
             ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(top: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
             child: Icon(
               LucideIcons.chevronRight,
               size: 18,
@@ -858,7 +888,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               LucideIcons.triangleAlert,
               size: 56,
               color: AppColors.textMuted,
@@ -1001,6 +1031,8 @@ class _FilterMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isActive = value != 'all';
+
     return PopupMenuButton<String>(
       initialValue: value,
       onSelected: onChanged,
@@ -1013,8 +1045,8 @@ class _FilterMenu extends StatelessWidget {
                   children: [
                     Icon(
                       entry.key == value
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_off,
+                          ? LucideIcons.circleCheck
+                          : LucideIcons.circle,
                       size: 18,
                       color: AppColors.primary,
                     ),
@@ -1029,23 +1061,29 @@ class _FilterMenu extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isActive ? AppColors.accentSoft : AppColors.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(
+            color: isActive ? AppColors.primary : AppColors.divider,
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '$label : ${options[value] ?? value}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: isActive ? AppColors.primary : AppColors.textPrimary,
                 fontSize: 13,
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(Icons.expand_more, size: 18, color: AppColors.textMuted),
+            Icon(
+              LucideIcons.chevronDown,
+              size: 18,
+              color: isActive ? AppColors.primary : AppColors.textMuted,
+            ),
           ],
         ),
       ),
@@ -1191,15 +1229,14 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
 
   void _showMapAlertDetails(RoadReport alert) {
     final isHandled = alert.status == 'handled';
-    final statusColor =
-        isHandled ? const Color(0xFF2E7D32) : const Color(0xFFC97A00);
+    final statusColor = isHandled ? AppColors.success : AppColors.warning;
     final severityColor = widget.severityColor(alert.severity);
 
     Get.bottomSheet(
       Container(
         padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceElevated,
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(AppTokens.radiusBottomSheet),
           ),
@@ -1246,7 +1283,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(LucideIcons.x, color: AppColors.textMuted),
+                    icon: Icon(LucideIcons.x, color: AppColors.textMuted),
                     onPressed: () {
                       Navigator.of(
                         Get.overlayContext ?? context,
@@ -1279,16 +1316,16 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
               Row(
                 children: [
                   _VoteChip(
-                    icon: Icons.thumb_up_alt_outlined,
+                    icon: LucideIcons.thumbsUp,
                     label: '${alert.confirmationCount}',
-                    color: const Color(0xFF2E7D32),
+                    color: AppColors.success,
                     filled: alert.confirmationCount > 0,
                   ),
                   const SizedBox(width: 8),
                   _VoteChip(
-                    icon: Icons.thumb_down_alt_outlined,
+                    icon: LucideIcons.thumbsDown,
                     label: '${alert.refutationCount}',
-                    color: const Color(0xFFC62828),
+                    color: AppColors.error,
                     filled: alert.refutationCount > 0,
                   ),
                 ],
@@ -1330,7 +1367,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
           ),
           IconButton(
             tooltip: 'Recentrer',
-            icon: const Icon(Icons.center_focus_strong),
+            icon: const Icon(LucideIcons.locateFixed),
             onPressed: _fitBounds,
           ),
         ],
@@ -1359,15 +1396,9 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
             bottom: 16,
             child: Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
+              decoration: AppTokens.neumorphicDecoration(
+                color: AppColors.surfaceElevated,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.12),
-                    blurRadius: 12,
-                  ),
-                ],
               ),
               child: Wrap(
                 spacing: 12,
@@ -1375,7 +1406,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                 alignment: WrapAlignment.center,
                 children: [
                   _MapLegendItem(
-                    color: const Color(0xFFFF9800),
+                    color: AppColors.warning,
                     label: 'Active',
                     count:
                         widget.alerts
@@ -1383,7 +1414,7 @@ class _AlertsMapScreenState extends State<AlertsMapScreen> {
                             .length,
                   ),
                   _MapLegendItem(
-                    color: const Color(0xFF2E7D32),
+                    color: AppColors.success,
                     label: 'Prise en charge',
                     count:
                         widget.alerts
@@ -1416,7 +1447,7 @@ class _MapLegendItem extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.location_on, color: color, size: 20),
+        Icon(LucideIcons.mapPin, color: color, size: 20),
         const SizedBox(width: 4),
         Text(
           '$label ($count)',
@@ -1481,12 +1512,14 @@ class _AlertStats {
 }
 
 class _StatTile extends StatelessWidget {
+  final double width;
   final IconData icon;
   final String label;
   final String value;
   final Color color;
 
   const _StatTile({
+    required this.width,
     required this.icon,
     required this.label,
     required this.value,
@@ -1496,13 +1529,11 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 158,
+      width: width,
       constraints: const BoxConstraints(minHeight: 82),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+      decoration: AppTokens.neumorphicDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1586,10 +1617,8 @@ class _InfoPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.background,
+      decoration: AppTokens.neumorphicDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1614,10 +1643,8 @@ class _DetailSection extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
+      decoration: AppTokens.neumorphicDecoration(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

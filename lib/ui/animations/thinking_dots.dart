@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 class ThinkingDots extends StatefulWidget {
   final String label;
 
-  const ThinkingDots({super.key, this.label = 'BotRoad réfléchit'});
+  const ThinkingDots({super.key, this.label = 'Wapi réfléchit'});
 
   @override
   State<ThinkingDots> createState() => _ThinkingDotsState();

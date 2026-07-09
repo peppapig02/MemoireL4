@@ -1,4 +1,5 @@
 import 'package:botroad/ui/animations/app_animations.dart';
+import 'package:botroad/ui/theme/app_tokens.dart';
 import 'package:botroad/utils/Setting.dart';
 import 'package:botroad/utils/const/colors.dart';
 import 'package:flutter/material.dart';
@@ -26,7 +27,7 @@ void showElegantSnackbar({
     title,
     message,
     snackPosition: SnackPosition.BOTTOM,
-    backgroundColor: AppColors.surface,
+    backgroundColor: AppColors.surfaceElevated,
     colorText: AppColors.textPrimary,
     margin: const EdgeInsets.all(16),
     borderRadius: 16,
@@ -38,12 +39,6 @@ void showElegantSnackbar({
       isError ? Icons.error_outline : Icons.info_outline,
       color: isError ? AppColors.error : AppColors.primary,
     ),
-    boxShadows: [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.2),
-        blurRadius: 16,
-        offset: const Offset(0, 4),
-      ),
-    ],
+    boxShadows: AppTokens.neumorphicRaised(),
   );
 }
