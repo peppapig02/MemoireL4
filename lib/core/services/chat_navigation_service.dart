@@ -7,11 +7,13 @@ class ChatNavigationResult {
   final ChatRouteRequest request;
   final bool isReadyForRouting;
   final String? failureReason;
+  final List<GeocodingResult> destinationOptions;
 
   const ChatNavigationResult({
     required this.request,
     required this.isReadyForRouting,
     this.failureReason,
+    this.destinationOptions = const [],
   });
 }
 
@@ -72,11 +74,14 @@ class ChatNavigationService {
       );
     }
 
-    final destinationResult = await geocodingService.geocodePlace(
+    final destinationOptions = await geocodingService.geocodePlaceOptions(
       enrichedRequest.destinationText!,
       biasLatitude: enrichedRequest.startLat,
       biasLongitude: enrichedRequest.startLng,
+      limit: 3,
     );
+    final destinationResult =
+        destinationOptions.isEmpty ? null : destinationOptions.first;
     if (destinationResult == null) {
       return ChatNavigationResult(
         request: enrichedRequest,
@@ -120,6 +125,7 @@ class ChatNavigationService {
       request: enrichedRequest,
       isReadyForRouting: isReady,
       failureReason: isReady ? null : 'start_location_not_resolved',
+      destinationOptions: destinationOptions,
     );
   }
 

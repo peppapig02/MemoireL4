@@ -12,6 +12,7 @@ import 'package:botroad/core/services/road_report_service.dart';
 import 'package:botroad/core/services/route_risk_service.dart';
 import 'package:botroad/core/services/routing_service.dart';
 import 'package:botroad/core/services/trip_history_service.dart';
+import 'package:botroad/core/models/nearby_place.dart';
 import 'package:botroad/core/models/route_result.dart';
 import 'package:botroad/models/conversations_model.dart';
 import 'package:botroad/models/messages_model.dart';
@@ -479,24 +480,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
               routeResult.warnings.isNotEmpty
                   ? " Attention, ${routeResult.warnings.length} signalement(s) de route ont ete detecte(s) sur ou pres de cet itineraire."
                   : '';
+          final ambiguityText = _buildDestinationAmbiguityText(
+            navigationResult,
+          );
           final botMessage =
-              "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText Je l'affiche sur la carte.";
+              "J'ai trouve un itineraire de ${routeResult.startLabel ?? request.startText ?? 'votre position actuelle'} vers ${routeResult.destinationLabel ?? request.destinationText ?? 'la destination'}. Distance estimee: ${routeResult.distance.toStringAsFixed(1)} km, duree estimee: ${routeResult.duration.toStringAsFixed(0)} min.$warningText$ambiguityText Je l'affiche sur la carte.";
 
           final messageId = await _saveBotMessage(conversationId, botMessage);
           if (messageId != null) {
-            final card = routeCardFromResult(
+            final card = _routeCardFromRouteResult(
+              routeResult: routeResult,
               route: route,
-              departure:
-                  routeResult.startLabel ??
-                  request.startText ??
-                  'Position actuelle',
-              destination:
-                  routeResult.destinationLabel ??
-                  request.destinationText ??
-                  'Destination',
-              distanceKm: routeResult.distance,
-              durationMin: routeResult.duration,
-              warningCount: routeResult.warnings.length,
             );
             Get.put(ActiveRouteController(), permanent: true);
             Get.find<ActiveRouteController>().setActiveRoute(
@@ -568,7 +562,24 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
                 ? "Voici les ${places.length} ${request.category} les plus proches :"
                 : "Voici le ${request.category} le plus proche :";
 
-        await _saveBotMessage(conversationId, "$title\n$lines");
+        final messageId = await _saveBotMessage(
+          conversationId,
+          "$title\n$lines\n\nTouchez une option pour afficher directement l'itineraire sur la carte.",
+        );
+        if (messageId != null) {
+          final routeChoices = await _buildNearbyRouteChoices(
+            places,
+            startLat: request.startLat!,
+            startLng: request.startLng!,
+          );
+          if (routeChoices.isNotEmpty) {
+            Get.put(ActiveRouteController(), permanent: true);
+            Get.find<ActiveRouteController>().setRouteChoices(
+              messageId,
+              routeChoices,
+            );
+          }
+        }
         return true;
       }
 
@@ -687,6 +698,95 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
       routeResult: routeResult,
     );
     await tripHistoryService.saveTripHistory(tripHistory);
+  }
+
+  String _buildDestinationAmbiguityText(ChatNavigationResult result) {
+    final options = result.destinationOptions;
+    if (options.length <= 1) {
+      return '';
+    }
+
+    final lines = options
+        .take(3)
+        .map((option) {
+          final address =
+              option.address != null && option.address!.trim().isNotEmpty
+                  ? ' - ${option.address}'
+                  : '';
+          return "${option.label}$address";
+        })
+        .join('; ');
+
+    return " J'ai trouve plusieurs lieux possibles ($lines). J'utilise le plus proche de votre position.";
+  }
+
+  Future<List<RouteCardInfo>> _buildNearbyRouteChoices(
+    List<NearbyPlace> places, {
+    required double startLat,
+    required double startLng,
+  }) async {
+    final choices = <RouteCardInfo>[];
+
+    for (final place in places.take(3)) {
+      try {
+        final routeCandidates = await routingService.calculateRoutes(
+          userId: Setting.userCtrl.user.value.key,
+          startLat: startLat,
+          startLng: startLng,
+          destinationLat: place.latitude,
+          destinationLng: place.longitude,
+          startLabel: 'Position actuelle',
+          destinationLabel: place.name,
+          alternatives: true,
+        );
+
+        if (routeCandidates.isEmpty) {
+          continue;
+        }
+
+        final checkedRoutes = await routeRiskService.attachWarningsToRoutes(
+          routeCandidates,
+        );
+        final routeResult = routeRiskService.chooseBestRoute(
+          checkedRoutes,
+          'fast',
+        );
+        final route = await _persistRouteResult(routeResult);
+        if (route == null) {
+          continue;
+        }
+
+        choices.add(
+          _routeCardFromRouteResult(
+            routeResult: routeResult,
+            route: route,
+            accentIndex: choices.length,
+          ),
+        );
+      } catch (e) {
+        printDebug("nearby route choice error ::: $e");
+      }
+    }
+
+    return choices;
+  }
+
+  RouteCardInfo _routeCardFromRouteResult({
+    required RouteResult routeResult,
+    required RoutesModel route,
+    int accentIndex = 0,
+  }) {
+    return routeCardFromResult(
+      route: route,
+      departure: routeResult.startLabel ?? 'Position actuelle',
+      destination: routeResult.destinationLabel ?? 'Destination',
+      distanceKm: routeResult.distance,
+      durationMin: routeResult.duration,
+      warningCount: routeResult.warnings.length,
+      destinationLat: routeResult.destinationLat,
+      destinationLng: routeResult.destinationLng,
+      accentIndex: accentIndex,
+    );
   }
 
   String _buildNavigationFailureMessage(ChatNavigationResult result) {
@@ -1082,6 +1182,17 @@ Explique poliment à l'utilisateur quels lieux n'ont pas pu être trouvés et de
         !isUser && routeCtrl != null
             ? routeCtrl.cardForMessage(message.key)
             : null;
+    final routeChoices =
+        !isUser && routeCtrl != null
+            ? routeCtrl.choicesForMessage(message.key)
+            : const <RouteCardInfo>[];
+
+    if (routeChoices.isNotEmpty) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: RouteChoiceCard(choices: routeChoices),
+      );
+    }
 
     if (routeCard != null) {
       return Align(

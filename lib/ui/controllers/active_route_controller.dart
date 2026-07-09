@@ -11,6 +11,9 @@ class RouteCardInfo {
   final double distanceKm;
   final double durationMin;
   final int warningCount;
+  final double? destinationLat;
+  final double? destinationLng;
+  final int accentIndex;
 
   const RouteCardInfo({
     required this.route,
@@ -19,6 +22,9 @@ class RouteCardInfo {
     required this.distanceKm,
     required this.durationMin,
     this.warningCount = 0,
+    this.destinationLat,
+    this.destinationLng,
+    this.accentIndex = 0,
   });
 
   String get trafficStatus =>
@@ -28,8 +34,8 @@ class RouteCardInfo {
       warningCount >= 3
           ? 'Route dégradée'
           : warningCount > 0
-              ? 'Qualité moyenne'
-              : 'Bonne';
+          ? 'Qualité moyenne'
+          : 'Bonne';
 }
 
 /// Partage l'itinéraire actif entre Assistant et Carte sans toucher au backend.
@@ -37,6 +43,8 @@ class ActiveRouteController extends GetxController {
   final Rx<RoutesModel?> activeRoute = Rx<RoutesModel?>(null);
   final RxMap<String, RouteCardInfo> routeCardsByMessageId =
       <String, RouteCardInfo>{}.obs;
+  final RxMap<String, List<RouteCardInfo>> routeChoicesByMessageId =
+      <String, List<RouteCardInfo>>{}.obs;
   final RxBool isNavigating = false.obs;
 
   void setActiveRoute(
@@ -55,6 +63,16 @@ class ActiveRouteController extends GetxController {
     return routeCardsByMessageId[messageId];
   }
 
+  void setRouteChoices(String messageId, List<RouteCardInfo> choices) {
+    if (choices.isEmpty) return;
+    routeChoicesByMessageId[messageId] = choices;
+  }
+
+  List<RouteCardInfo> choicesForMessage(String? messageId) {
+    if (messageId == null) return const [];
+    return routeChoicesByMessageId[messageId] ?? const [];
+  }
+
   void clearRoute() {
     activeRoute.value = null;
     isNavigating.value = false;
@@ -68,6 +86,9 @@ RouteCardInfo routeCardFromResult({
   required double distanceKm,
   required double durationMin,
   int warningCount = 0,
+  double? destinationLat,
+  double? destinationLng,
+  int accentIndex = 0,
 }) {
   return RouteCardInfo(
     route: route,
@@ -76,6 +97,9 @@ RouteCardInfo routeCardFromResult({
     distanceKm: distanceKm,
     durationMin: durationMin,
     warningCount: warningCount,
+    destinationLat: destinationLat,
+    destinationLng: destinationLng,
+    accentIndex: accentIndex,
   );
 }
 
@@ -99,7 +123,8 @@ double estimateDistanceFromPoints(String? points) {
     const earthRadius = 6371.0;
     final dLat = _toRad(lat2 - lat1);
     final dLng = _toRad(lng2 - lng1);
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(_toRad(lat1)) *
             math.cos(_toRad(lat2)) *
             math.sin(dLng / 2) *
