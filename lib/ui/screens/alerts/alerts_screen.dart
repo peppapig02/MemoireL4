@@ -390,7 +390,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               (_, __, ___) => Container(
                 color: AppColors.surfaceElevated,
                 alignment: Alignment.center,
-                child: const Icon(
+                child: Icon(
                   LucideIcons.imageOff,
                   color: AppColors.textMuted,
                 ),
